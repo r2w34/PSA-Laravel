@@ -1,0 +1,39 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Build artifacts
+dist
+node_modules
+.cache
+*.log
+
+# Environment files (except production)
+.env
+.env.local
+.env.development
+.env.test
+
+# Documentation files
+*.md
+!README.md
+
+# Development files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Deployment scripts (not needed in container)
+deploy-to-vps.sh
+deploy-production.sh
+complete-deploy.sh
+install.sh
+
+# React Native files (not needed for web deployment)
+react-native-components
+
+# Temporary files
+.DS_Store
+Thumbs.db

@@ -10,6 +10,7 @@ import { locationTrackingService } from "./location-tracking";
 import { userPermissionService } from "./user-permission";
 import { gamificationService } from "./gamification";
 import mobileRoutes from "./mobile-routes";
+import healthRoutes from "./routes/health";
 import { insertStudentSchema, insertPaymentSchema, insertAttendanceSchema, insertCoachSchema, insertSportSchema, insertBatchSchema, insertCommunicationSchema, insertCampaignSchema, insertCampaignMessageSchema, insertMessageTemplateSchema, insertCustomReportSchema, insertReportExecutionSchema, insertSavedQuerySchema, insertLocationTrackingSchema, insertGeofenceSchema, insertCoachAttendanceSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -41,6 +42,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
   };
+
+  // Health check route
+  app.use("/api", healthRoutes);
 
   // Mobile routes
   app.use("/api/mobile", mobileRoutes);
