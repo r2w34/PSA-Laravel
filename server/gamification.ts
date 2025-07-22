@@ -248,14 +248,14 @@ export class GamificationService {
   private async evaluateAttendanceCriteria(studentId: number, requirements: BadgeCondition): Promise<boolean> {
     const attendanceData = await storage.getStudentAttendance(studentId);
     
-    if (criteria.operator === 'streak') {
+    if (requirements.operator === 'streak') {
       // Calculate attendance streak
       const streak = this.calculateAttendanceStreak(attendanceData);
-      return streak >= criteria.value;
-    } else if (criteria.operator === 'greater') {
+      return streak >= requirements.value;
+    } else if (requirements.operator === 'greater') {
       // Calculate attendance percentage
-      const percentage = this.calculateAttendancePercentage(attendanceData, criteria.timeframe);
-      return percentage >= criteria.value;
+      const percentage = this.calculateAttendancePercentage(attendanceData, requirements.timeframe);
+      return percentage >= requirements.value;
     }
     
     return false;
@@ -264,11 +264,11 @@ export class GamificationService {
   private async evaluatePaymentCriteria(studentId: number, requirements: BadgeCondition): Promise<boolean> {
     const paymentData = await storage.getStudentPayments(studentId);
     
-    if (criteria.operator === 'streak') {
+    if (requirements.operator === 'streak') {
       // Calculate on-time payment streak
       const streak = this.calculatePaymentStreak(paymentData);
-      return streak >= criteria.value;
-    } else if (criteria.operator === 'equals' && criteria.value === 0) {
+      return streak >= requirements.value;
+    } else if (requirements.operator === 'equals' && requirements.value === 0) {
       // Check if student has never missed a payment
       const missedPayments = paymentData.filter(p => p.status === 'overdue').length;
       return missedPayments === 0;
@@ -280,13 +280,13 @@ export class GamificationService {
   private async evaluatePerformanceCriteria(studentId: number, requirements: BadgeCondition): Promise<boolean> {
     const student = await storage.getStudent(studentId);
     
-    if (criteria.operator === 'equals') {
+    if (requirements.operator === 'equals') {
       // Check if student has reached a specific skill level
-      return student?.skillLevel >= criteria.value;
-    } else if (criteria.operator === 'greater') {
+      return student?.skillLevel >= requirements.value;
+    } else if (requirements.operator === 'greater') {
       // Check performance improvement over time
       const performanceHistory = await storage.getStudentPerformanceHistory(studentId);
-      return this.calculatePerformanceImprovement(performanceHistory, criteria.timeframe) >= criteria.value;
+      return this.calculatePerformanceImprovement(performanceHistory, requirements.timeframe) >= requirements.value;
     }
     
     return false;
@@ -295,19 +295,19 @@ export class GamificationService {
   private async evaluateMilestoneCriteria(studentId: number, requirements: BadgeCondition): Promise<boolean> {
     const student = await storage.getStudent(studentId);
     
-    if (criteria.operator === 'greater') {
-      if (criteria.value === 365) {
+    if (requirements.operator === 'greater') {
+      if (requirements.value === 365) {
         // Check if student has been training for 1 year
         const daysSinceJoining = Math.floor((new Date().getTime() - new Date(student.joiningDate).getTime()) / (1000 * 60 * 60 * 24));
-        return daysSinceJoining >= criteria.value;
-      } else if (criteria.value === 100) {
+        return daysSinceJoining >= requirements.value;
+      } else if (requirements.value === 100) {
         // Check if student has completed 100 sessions
         const attendanceCount = await storage.getStudentAttendanceCount(studentId);
-        return attendanceCount >= criteria.value;
-      } else if (criteria.value === 7) {
+        return attendanceCount >= requirements.value;
+      } else if (requirements.value === 7) {
         // Check if student has completed first week
         const daysSinceJoining = Math.floor((new Date().getTime() - new Date(student.joiningDate).getTime()) / (1000 * 60 * 60 * 24));
-        return daysSinceJoining >= criteria.value;
+        return daysSinceJoining >= requirements.value;
       }
     }
     

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -7,6 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DigitalCard } from "./digital-card";
 import { StudentCard } from "./student-card";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -45,6 +47,67 @@ export function StudentTable({ students, isLoading, sports, batches }: StudentTa
   const [editForm, setEditForm] = useState<Partial<Student>>({});
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Update student mutation
+  const updateStudentMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<Student> }) => {
+      const response = await fetch(`/api/students/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update student');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/students'] });
+      toast({
+        title: "Success",
+        description: "Student updated successfully",
+      });
+      setIsEditDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete student mutation
+  const deleteStudentMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/students/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete student');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/students'] });
+      toast({
+        title: "Success",
+        description: "Student deleted successfully",
+      });
+      setIsDeleteDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const getSportName = (sportId: number) => {
     return sports.find(s => s.id === sportId)?.name || 'Unknown';
@@ -100,37 +163,9 @@ export function StudentTable({ students, isLoading, sports, batches }: StudentTa
     setIsDeleteDialogOpen(true);
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = () => {
     if (!selectedStudent) return;
-    
-    try {
-      const response = await fetch(`/api/students/${selectedStudent.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(editForm),
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Student updated successfully",
-        });
-        setIsEditDialogOpen(false);
-        // Refresh the page to show updated data
-        window.location.reload();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update student');
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update student",
-        variant: "destructive",
-      });
-    }
+    updateStudentMutation.mutate({ id: selectedStudent.id, data: editForm });
   };
 
   const handleSaveComment = async () => {
@@ -153,33 +188,9 @@ export function StudentTable({ students, isLoading, sports, batches }: StudentTa
     }
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = () => {
     if (!selectedStudent) return;
-    
-    try {
-      const response = await fetch(`/api/students/${selectedStudent.id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Student deleted successfully",
-        });
-        setIsDeleteDialogOpen(false);
-        // Refresh the page to show updated data
-        window.location.reload();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete student');
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete student",
-        variant: "destructive",
-      });
-    }
+    deleteStudentMutation.mutate(selectedStudent.id);
   };
 
   if (isLoading) {
@@ -205,8 +216,8 @@ export function StudentTable({ students, isLoading, sports, batches }: StudentTa
             <StudentCard
               key={student.id}
               student={student}
-              onEdit={() => {}} // TODO: Implement edit functionality
-              onDelete={() => {}} // TODO: Implement delete functionality
+              onEdit={() => handleEditStudent(student)}
+              onDelete={() => handleDeleteStudent(student)}
             />
           ))}
         </div>

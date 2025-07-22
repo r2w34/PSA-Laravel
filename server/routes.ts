@@ -8,6 +8,7 @@ import { generateStudentInsights, generateRevenueAnalysis, generateAttendanceIns
 import { sendWhatsAppNotification } from "./notifications";
 import { locationTrackingService } from "./location-tracking";
 import { userPermissionService } from "./user-permission";
+import { requireAuth } from "./auth-middleware";
 import { gamificationService } from "./gamification";
 import mobileRoutes from "./mobile-routes";
 import healthRoutes from "./routes/health";
@@ -49,8 +50,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mobile routes
   app.use("/api/mobile", mobileRoutes);
 
+  // Web Authentication routes
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+      }
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      // Verify password
+      const bcrypt = await import('bcrypt');
+      const isValidPassword = await bcrypt.compare(password, user.password || '');
+      if (!isValidPassword) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      // Update last login
+      await storage.updateUserLastLogin(user.id);
+
+      // Store user in session
+      (req as any).session.user = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role
+      };
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role
+        }
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    try {
+      (req as any).session.destroy((err: any) => {
+        if (err) {
+          console.error("Logout error:", err);
+          return res.status(500).json({ error: "Logout failed" });
+        }
+        res.json({ success: true });
+      });
+    } catch (error) {
+      console.error("Logout error:", error);
+      res.status(500).json({ error: "Logout failed" });
+    }
+  });
+
+  app.get("/api/auth/user", (req, res) => {
+    try {
+      const user = (req as any).session?.user;
+      if (!user) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      res.json({ user });
+    } catch (error) {
+      console.error("Get user error:", error);
+      res.status(500).json({ error: "Failed to get user" });
+    }
+  });
+
   // Dashboard endpoints
-  app.get("/api/dashboard/stats", async (req, res) => {
+  app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
     try {
       const stats = await storage.getDashboardStats();
       res.json(stats);
@@ -60,7 +137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/dashboard/revenue-chart", async (req, res) => {
+  app.get("/api/dashboard/revenue-chart", requireAuth, async (req, res) => {
     try {
       const year = parseInt(req.query.year as string) || new Date().getFullYear();
       const revenue = await storage.getMonthlyRevenueReport(year);
@@ -72,7 +149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Student endpoints
-  app.get("/api/students", async (req, res) => {
+  app.get("/api/students", requireAuth, async (req, res) => {
     try {
       const filters = {
         sportId: req.query.sportId ? parseInt(req.query.sportId as string) : undefined,
@@ -107,7 +184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/students", async (req, res) => {
+  app.post("/api/students", requireAuth, async (req, res) => {
     try {
       const studentData = insertStudentSchema.parse(req.body);
       
@@ -144,7 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createActivity({
         type: 'student_enrolled',
         description: `New student enrolled: ${student.name}`,
-        userId: 1, // TODO: Get from authenticated user
+        userId: (req as any).user?.id || 1,
         entityId: student.id,
         entityType: 'student'
       });
@@ -162,7 +239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/students/:id", async (req, res) => {
+  app.put("/api/students/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const updates = req.body;
@@ -195,7 +272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createActivity({
         type: 'student_updated',
         description: `Student updated: ${student.name}`,
-        userId: 1, // TODO: Get from authenticated user
+        userId: (req as any).user?.id || 1,
         entityId: student.id,
         entityType: 'student'
       });
@@ -213,7 +290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/students/:id", async (req, res) => {
+  app.delete("/api/students/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       
@@ -230,7 +307,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createActivity({
         type: 'student_deleted',
         description: `Student deleted: ${student.name} (ID: ${student.studentId})`,
-        userId: 1, // TODO: Get from authenticated user
+        userId: (req as any).user?.id || 1,
         entityId: student.id,
         entityType: 'student'
       });
@@ -250,7 +327,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Payment endpoints
-  app.get("/api/payments", async (req, res) => {
+  app.get("/api/payments", requireAuth, async (req, res) => {
     try {
       const filters = {
         studentId: req.query.studentId ? parseInt(req.query.studentId as string) : undefined,
@@ -269,7 +346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/payments", async (req, res) => {
+  app.post("/api/payments", requireAuth, async (req, res) => {
     try {
       const paymentData = insertPaymentSchema.parse(req.body);
       
@@ -287,7 +364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createActivity({
         type: 'payment_received',
         description: `Payment received: ₹${payment.amount}`,
-        userId: 1, // TODO: Get from authenticated user
+        userId: (req as any).user?.id || 1,
         entityId: payment.id,
         entityType: 'payment'
       });
@@ -450,7 +527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Attendance endpoints
-  app.get("/api/attendance", async (req, res) => {
+  app.get("/api/attendance", requireAuth, async (req, res) => {
     try {
       const date = req.query.date as string;
       const batchId = req.query.batchId ? parseInt(req.query.batchId as string) : undefined;
@@ -463,20 +540,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/attendance", async (req, res) => {
+  app.post("/api/attendance", requireAuth, async (req, res) => {
     try {
       const attendanceData = insertAttendanceSchema.parse(req.body);
       
       const attendance = await storage.markAttendance({
         ...attendanceData,
-        markedBy: 1 // TODO: Get from authenticated user
+        markedBy: (req as any).user?.id || 1
       });
 
       // Create activity
       await storage.createActivity({
         type: 'attendance_marked',
         description: `Attendance marked for ${attendanceData.date}`,
-        userId: 1, // TODO: Get from authenticated user
+        userId: (req as any).user?.id || 1,
         entityId: attendance.id,
         entityType: 'attendance'
       });
@@ -525,7 +602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Sports endpoints
-  app.get("/api/sports", async (req, res) => {
+  app.get("/api/sports", requireAuth, async (req, res) => {
     try {
       const isActive = req.query.isActive ? req.query.isActive === 'true' : undefined;
       const sports = await storage.getSports(isActive);
@@ -537,7 +614,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Batches endpoints
-  app.get("/api/batches", async (req, res) => {
+  app.get("/api/batches", requireAuth, async (req, res) => {
     try {
       const filters = {
         sportId: req.query.sportId ? parseInt(req.query.sportId as string) : undefined,
@@ -553,7 +630,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/batches", async (req, res) => {
+  app.post("/api/batches", requireAuth, async (req, res) => {
     try {
       const batchData = insertBatchSchema.parse(req.body);
       const batch = await storage.createBatch(batchData);
@@ -562,7 +639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createActivity({
         type: 'batch_created',
         description: `New batch created: ${batch.name}`,
-        userId: 1, // TODO: Get from authenticated user
+        userId: (req as any).user?.id || 1,
         entityId: batch.id,
         entityType: 'batch'
       });
@@ -609,7 +686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createActivity({
         type: 'batch_deleted',
         description: `Batch deleted: ${batch.name}`,
-        userId: 1, // TODO: Get from authenticated user
+        userId: (req as any).user?.id || 1,
         entityId: batch.id,
         entityType: 'batch'
       });
@@ -749,7 +826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/reports/generate/:id", async (req, res) => {
     try {
       const reportId = parseInt(req.params.id);
-      const executedBy = 1; // TODO: Get from authenticated user
+      const executedBy = (req as any).user?.id || 1;
       
       const reportExecution = await reportGenerator.generateReport(reportId, executedBy);
       res.json(reportExecution);
@@ -779,7 +856,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reportData = req.body;
       const report = await storage.createCustomReport({
         ...reportData,
-        createdBy: 1 // TODO: Get from authenticated user
+        createdBy: (req as any).user?.id || 1
       });
       res.json(report);
     } catch (error) {

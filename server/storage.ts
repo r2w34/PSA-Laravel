@@ -1,6 +1,7 @@
 import { 
   users, coaches, students, sports, batches, payments, attendance, activities, communications, settings, icons, paymentGateways,
   campaigns, campaignMessages, messageTemplates, badges, studentBadges, studentPoints, achievementHistory, permissions,
+  customReports, reportExecutions, savedQueries,
   type User, type InsertUser, type Coach, type InsertCoach, type Student, type InsertStudent, type Sport, type InsertSport,
   type Batch, type InsertBatch, type Payment, type InsertPayment, type Attendance, type InsertAttendance,
   type Activity, type InsertActivity, type Communication, type InsertCommunication,
@@ -8,7 +9,8 @@ import {
   type Campaign, type InsertCampaign, type CampaignMessage, type InsertCampaignMessage,
   type MessageTemplate, type InsertMessageTemplate, type Badge, type InsertBadge,
   type StudentBadge, type InsertStudentBadge, type StudentPoints, type InsertStudentPoints,
-  type AchievementHistory, type InsertAchievementHistory
+  type AchievementHistory, type InsertAchievementHistory, type CustomReport, type InsertCustomReport,
+  type ReportExecution, type InsertReportExecution, type SavedQuery, type InsertSavedQuery
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, or, gte, lte, count, sum, avg, like, sql } from "drizzle-orm";
@@ -18,8 +20,10 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUsers(): Promise<User[]>;
   getUserByPhone(phone: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined>;
+  updateUserLastLogin(id: number): Promise<User | undefined>;
   updateUserRole(id: number, role: string): Promise<User | undefined>;
   updateUserPermissions(id: number, permissions: string[]): Promise<User | undefined>;
   activateUser(id: number): Promise<User | undefined>;
@@ -224,6 +228,11 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
   async createUser(userData: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(userData).returning();
     return user;
@@ -233,6 +242,15 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .update(users)
       .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async updateUserLastLogin(id: number): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ lastLogin: new Date(), updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
     return user;
@@ -634,58 +652,39 @@ export class DatabaseStorage implements IStorage {
     if (filters?.status) conditions.push(eq(payments.status, filters.status));
     if (filters?.monthYear) conditions.push(eq(payments.monthYear, filters.monthYear));
 
-    // Build base query with student join for enhanced search
-    const baseQuery = db.select({
-      id: payments.id,
-      studentId: payments.studentId,
-      amount: payments.amount,
-      paymentMethod: payments.paymentMethod,
-      status: payments.status,
-      paymentDate: payments.paymentDate,
-      receiptNumber: payments.receiptNumber,
-      monthYear: payments.monthYear,
-      description: payments.description,
-      createdAt: payments.createdAt,
-      updatedAt: payments.updatedAt,
-      student: {
-        name: students.name,
-        studentId: students.studentId,
-        phone: students.phone
-      }
-    }).from(payments)
-    .leftJoin(students, eq(payments.studentId, students.id));
-
-    // Handle search functionality
-    if (filters?.search) {
-      const searchTerm = `%${filters.search.toLowerCase()}%`;
-      conditions.push(
-        or(
-          like(sql`LOWER(${payments.receiptNumber})`, searchTerm),
-          like(sql`LOWER(${payments.paymentMethod})`, searchTerm),
-          like(sql`LOWER(${payments.description})`, searchTerm),
-          like(sql`LOWER(CAST(${payments.amount} AS TEXT))`, searchTerm),
-          like(sql`LOWER(${students.name})`, searchTerm),
-          like(sql`LOWER(${students.studentId})`, searchTerm),
-          like(sql`LOWER(${students.phone})`, searchTerm)
-        )
-      );
-    }
-
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
     
+    // Get payments first (simple query)
     const [paymentsResult, totalResult] = await Promise.all([
-      baseQuery
+      db.select().from(payments)
         .where(whereClause)
         .limit(filters?.limit || 50)
         .offset(filters?.offset || 0)
         .orderBy(desc(payments.createdAt)),
       db.select({ count: count() }).from(payments)
-        .leftJoin(students, eq(payments.studentId, students.id))
         .where(whereClause)
     ]);
 
+    // Get student info for each payment
+    const paymentsWithStudents = await Promise.all(
+      paymentsResult.map(async (payment) => {
+        const student = payment.studentId 
+          ? await db.select({
+              name: students.name,
+              studentId: students.studentId,
+              phone: students.phone
+            }).from(students).where(eq(students.id, payment.studentId)).limit(1)
+          : [];
+
+        return {
+          ...payment,
+          student: student[0] || null
+        };
+      })
+    );
+
     return {
-      payments: paymentsResult,
+      payments: paymentsWithStudents,
       total: totalResult[0]?.count || 0
     };
   }
