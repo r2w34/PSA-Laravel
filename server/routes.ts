@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
@@ -16,6 +17,9 @@ import { insertStudentSchema, insertPaymentSchema, insertAttendanceSchema, inser
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { campaignTemplates } from "./campaign-automation";
+import { uploadProfile, uploadIcon, deleteFile } from "./upload-middleware";
+import path from "path";
+import fs from "fs";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -54,6 +58,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
+      console.log('Login attempt:', { email, password: password ? '***' : 'missing' });
 
       if (!email || !password) {
         return res.status(400).json({ error: "Email and password are required" });
@@ -61,6 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Find user by email
       const user = await storage.getUserByEmail(email);
+      console.log('User found:', user ? { id: user.id, email: user.email, hasPassword: !!user.password } : 'null');
       if (!user) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
@@ -68,6 +74,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify password
       const bcrypt = await import('bcrypt');
       const isValidPassword = await bcrypt.compare(password, user.password || '');
+      console.log('Password validation:', { isValidPassword, storedHash: user.password?.substring(0, 10) + '...' });
       if (!isValidPassword) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
@@ -114,6 +121,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/auth/user", (req, res) => {
+    try {
+      const user = (req as any).session?.user;
+      if (!user) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      res.json({ user });
+    } catch (error) {
+      console.error("Get user error:", error);
+      res.status(500).json({ error: "Failed to get user" });
+    }
+  });
+
+  // Alias for auth/me
+  app.get("/api/auth/me", (req, res) => {
     try {
       const user = (req as any).session?.user;
       if (!user) {
@@ -221,7 +242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createActivity({
         type: 'student_enrolled',
         description: `New student enrolled: ${student.name}`,
-        userId: (req as any).user?.id || 1,
+        userId: (req as any).session?.user?.id || 1,
         entityId: student.id,
         entityType: 'student'
       });
@@ -272,7 +293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createActivity({
         type: 'student_updated',
         description: `Student updated: ${student.name}`,
-        userId: (req as any).user?.id || 1,
+        userId: (req as any).session?.user?.id || 1,
         entityId: student.id,
         entityType: 'student'
       });
@@ -307,7 +328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createActivity({
         type: 'student_deleted',
         description: `Student deleted: ${student.name} (ID: ${student.studentId})`,
-        userId: (req as any).user?.id || 1,
+        userId: (req as any).session?.user?.id || 1,
         entityId: student.id,
         entityType: 'student'
       });
@@ -325,6 +346,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ message: errorMessage });
     }
   });
+
+  // File upload endpoints
+  app.post("/api/upload/profile/:studentId", requireAuth, (req, res) => {
+    uploadProfile(req, res, async (err) => {
+      if (err) {
+        console.error("Upload error:", err);
+        return res.status(400).json({ message: err.message });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      try {
+        const studentId = parseInt(req.params.studentId);
+        const profileImageUrl = `/uploads/profiles/${req.file.filename}`;
+
+        // Get current student to delete old profile image
+        const currentStudent = await storage.getStudent(studentId);
+        if (currentStudent?.profileImageUrl) {
+          const oldImagePath = path.join(process.cwd(), currentStudent.profileImageUrl);
+          deleteFile(oldImagePath);
+        }
+
+        // Update student with new profile image URL
+        await storage.updateStudent(studentId, { profileImageUrl });
+
+        // Create activity log
+        await storage.createActivity({
+          type: 'student_updated',
+          description: `Profile image updated for student ID: ${studentId}`,
+          userId: (req as any).session?.user?.id || 1,
+          entityId: studentId,
+          entityType: 'student'
+        });
+
+        res.json({ 
+          message: "Profile image uploaded successfully",
+          profileImageUrl 
+        });
+      } catch (error) {
+        console.error("Error updating profile image:", error);
+        // Delete uploaded file if database update fails
+        if (req.file) {
+          deleteFile(req.file.path);
+        }
+        res.status(500).json({ message: "Failed to update profile image" });
+      }
+    });
+  });
+
+  app.post("/api/upload/icon", requireAuth, (req, res) => {
+    uploadIcon(req, res, async (err) => {
+      if (err) {
+        console.error("Icon upload error:", err);
+        return res.status(400).json({ message: err.message });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      try {
+        const iconUrl = `/uploads/icons/${req.file.filename}`;
+
+        // Create activity log
+        await storage.createActivity({
+          type: 'system_updated',
+          description: `New icon uploaded: ${req.file.filename}`,
+          userId: (req as any).session?.user?.id || 1,
+          entityId: null,
+          entityType: 'system'
+        });
+
+        res.json({ 
+          message: "Icon uploaded successfully",
+          iconUrl,
+          filename: req.file.filename
+        });
+      } catch (error) {
+        console.error("Error uploading icon:", error);
+        // Delete uploaded file if there's an error
+        if (req.file) {
+          deleteFile(req.file.path);
+        }
+        res.status(500).json({ message: "Failed to upload icon" });
+      }
+    });
+  });
+
+  // Serve uploaded files
+  app.use('/uploads', express.static('uploads'));
 
   // Payment endpoints
   app.get("/api/payments", requireAuth, async (req, res) => {
@@ -364,7 +477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createActivity({
         type: 'payment_received',
         description: `Payment received: ₹${payment.amount}`,
-        userId: (req as any).user?.id || 1,
+        userId: (req as any).session?.user?.id || 1,
         entityId: payment.id,
         entityType: 'payment'
       });
@@ -546,14 +659,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const attendance = await storage.markAttendance({
         ...attendanceData,
-        markedBy: (req as any).user?.id || 1
+        markedBy: (req as any).session?.user?.id || 1
       });
 
       // Create activity
       await storage.createActivity({
         type: 'attendance_marked',
         description: `Attendance marked for ${attendanceData.date}`,
-        userId: (req as any).user?.id || 1,
+        userId: (req as any).session?.user?.id || 1,
         entityId: attendance.id,
         entityType: 'attendance'
       });
@@ -639,7 +752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createActivity({
         type: 'batch_created',
         description: `New batch created: ${batch.name}`,
-        userId: (req as any).user?.id || 1,
+        userId: (req as any).session?.user?.id || 1,
         entityId: batch.id,
         entityType: 'batch'
       });
@@ -686,7 +799,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createActivity({
         type: 'batch_deleted',
         description: `Batch deleted: ${batch.name}`,
-        userId: (req as any).user?.id || 1,
+        userId: (req as any).session?.user?.id || 1,
         entityId: batch.id,
         entityType: 'batch'
       });
@@ -826,7 +939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/reports/generate/:id", async (req, res) => {
     try {
       const reportId = parseInt(req.params.id);
-      const executedBy = (req as any).user?.id || 1;
+      const executedBy = (req as any).session?.user?.id || 1;
       
       const reportExecution = await reportGenerator.generateReport(reportId, executedBy);
       res.json(reportExecution);
@@ -856,7 +969,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reportData = req.body;
       const report = await storage.createCustomReport({
         ...reportData,
-        createdBy: (req as any).user?.id || 1
+        createdBy: (req as any).session?.user?.id || 1
       });
       res.json(report);
     } catch (error) {
@@ -2095,6 +2208,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error fetching permissions:", error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Icons endpoint
+  app.get('/api/icons', async (req, res) => {
+    try {
+      const iconsDir = path.join(process.cwd(), 'uploads/icons');
+      
+      if (!fs.existsSync(iconsDir)) {
+        return res.json([]);
+      }
+
+      const files = fs.readdirSync(iconsDir);
+      const icons = files
+        .filter((file: string) => /\.(jpg|jpeg|png|gif|svg)$/i.test(file))
+        .map((file: string, index: number) => ({
+          id: index + 1,
+          name: file,
+          url: `/uploads/icons/${file}`,
+          uploadDate: fs.statSync(path.join(iconsDir, file)).mtime
+        }));
+
+      res.json(icons);
+    } catch (error) {
+      console.error('Error fetching icons:', error);
+      res.status(500).json({ error: 'Failed to fetch icons' });
     }
   });
 

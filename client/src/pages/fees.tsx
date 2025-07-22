@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,9 +31,25 @@ export default function Fees() {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("quick-record");
   const { toast } = useToast();
   
   useRealtime();
+
+  // Handle URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchParam = urlParams.get('search');
+    const tabParam = urlParams.get('tab');
+    
+    if (searchParam) {
+      setSearchTerm(searchParam);
+    }
+    
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, []);
 
   const handleSendReminder = async (payment: any) => {
     try {
@@ -125,7 +141,7 @@ export default function Fees() {
         </div>
       </div>
 
-      <Tabs defaultValue="quick-record" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 mb-6">
           <TabsTrigger value="quick-record">Quick Record</TabsTrigger>
           <TabsTrigger value="overview">Overview</TabsTrigger>

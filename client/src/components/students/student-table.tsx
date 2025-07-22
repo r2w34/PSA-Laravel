@@ -142,7 +142,10 @@ export function StudentTable({ students, isLoading, sports, batches }: StudentTa
       name: student.name,
       phone: student.phone,
       email: student.email,
-      skillLevel: student.skillLevel
+      sportId: student.sportId,
+      batchId: student.batchId,
+      skillLevel: student.skillLevel,
+      profileImageUrl: student.profileImageUrl
     });
     setIsEditDialogOpen(true);
   };
@@ -168,6 +171,68 @@ export function StudentTable({ students, isLoading, sports, batches }: StudentTa
     updateStudentMutation.mutate({ id: selectedStudent.id, data: editForm });
   };
 
+  const handleProfileImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedStudent) return;
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "File size must be less than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error", 
+        description: "Please select an image file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('profileImage', file);
+
+      const response = await fetch(`/api/upload/profile/${selectedStudent.id}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      
+      // Update the edit form with the new profile image URL
+      setEditForm(prev => ({
+        ...prev,
+        profileImageUrl: result.profileImageUrl
+      }));
+
+      toast({
+        title: "Success",
+        description: "Profile image uploaded successfully"
+      });
+
+      // Refresh the students data
+      queryClient.invalidateQueries({ queryKey: ['/api/students'] });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload profile image",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleSaveComment = async () => {
     if (!selectedStudent || !comment.trim()) return;
     
@@ -191,6 +256,53 @@ export function StudentTable({ students, isLoading, sports, batches }: StudentTa
   const handleConfirmDelete = () => {
     if (!selectedStudent) return;
     deleteStudentMutation.mutate(selectedStudent.id);
+  };
+
+  const handleRecordPayment = (student: Student | null) => {
+    if (!student) return;
+    // Navigate to fees page with student pre-selected
+    window.location.href = `/fees?studentId=${student.id}&tab=quick-record`;
+  };
+
+  const handleViewPaymentHistory = (student: Student | null) => {
+    if (!student) return;
+    // Navigate to fees page with student search
+    window.location.href = `/fees?search=${student.name}&tab=overview`;
+  };
+
+  const handleSendFeeReminder = async (student: Student | null) => {
+    if (!student) return;
+    
+    try {
+      const response = await fetch('/api/notifications/fee-reminder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          studentId: student.id,
+          amount: 1000, // Default amount, can be customized
+          dueDate: new Date().toISOString(),
+          monthYear: new Date().toISOString().slice(0, 7)
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Reminder Sent",
+          description: `Fee reminder sent to ${student.name}`,
+        });
+      } else {
+        throw new Error('Failed to send reminder');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send fee reminder. Please check your notification settings.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {
@@ -414,7 +526,7 @@ export function StudentTable({ students, isLoading, sports, batches }: StudentTa
 
       {/* Edit Student Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Student</DialogTitle>
           </DialogHeader>
@@ -445,6 +557,73 @@ export function StudentTable({ students, isLoading, sports, batches }: StudentTa
               />
             </div>
             <div>
+              <Label htmlFor="profileImage">Profile Image</Label>
+              <div className="flex items-center space-x-4">
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={editForm.profileImageUrl} alt={editForm.name} />
+                  <AvatarFallback>
+                    {editForm.name?.split(' ').map(n => n[0]).join('') || 'ST'}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById('profile-image-upload')?.click()}
+                  >
+                    Upload New Image
+                  </Button>
+                  <input
+                    id="profile-image-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleProfileImageUpload}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Max 5MB, JPG/PNG only</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="sport">Sport</Label>
+              <select
+                id="sport"
+                value={editForm.sportId || ''}
+                onChange={(e) => {
+                  const sportId = parseInt(e.target.value);
+                  setEditForm({ ...editForm, sportId, batchId: undefined });
+                }}
+                className="w-full p-2 border rounded"
+              >
+                <option value="">Select a sport</option>
+                {sports.map((sport) => (
+                  <option key={sport.id} value={sport.id}>
+                    {sport.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="batch">Batch</Label>
+              <select
+                id="batch"
+                value={editForm.batchId || ''}
+                onChange={(e) => setEditForm({ ...editForm, batchId: parseInt(e.target.value) })}
+                className="w-full p-2 border rounded"
+                disabled={!editForm.sportId}
+              >
+                <option value="">Select a batch</option>
+                {batches
+                  .filter(batch => batch.sportId === editForm.sportId)
+                  .map((batch) => (
+                    <option key={batch.id} value={batch.id}>
+                      {batch.schedule.time} - {batch.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div>
               <Label htmlFor="skillLevel">Skill Level</Label>
               <select
                 id="skillLevel"
@@ -457,6 +636,44 @@ export function StudentTable({ students, isLoading, sports, batches }: StudentTa
                 <option value="advanced">Advanced</option>
               </select>
             </div>
+            
+            {/* Fee Management Section */}
+            <div className="border-t pt-4">
+              <h3 className="text-lg font-semibold mb-3 flex items-center">
+                <CreditCard className="h-5 w-5 mr-2" />
+                Fee Management
+              </h3>
+              <div className="space-y-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRecordPayment(selectedStudent)}
+                  className="w-full"
+                >
+                  Record Payment
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleViewPaymentHistory(selectedStudent)}
+                  className="w-full"
+                >
+                  View Payment History
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSendFeeReminder(selectedStudent)}
+                  className="w-full"
+                >
+                  Send Fee Reminder
+                </Button>
+              </div>
+            </div>
+            
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                 Cancel

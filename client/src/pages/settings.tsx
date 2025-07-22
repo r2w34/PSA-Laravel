@@ -92,6 +92,65 @@ export default function SettingsPage() {
     updateSettingMutation.mutate({ key, value });
   };
 
+  const handleIconUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (2MB for icons)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "File size must be less than 2MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error", 
+        description: "Please select an image file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('icon', file);
+
+      const response = await fetch('/api/upload/icon', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      
+      toast({
+        title: "Success",
+        description: "Icon uploaded successfully"
+      });
+
+      // Refresh the icons data
+      queryClient.invalidateQueries({ queryKey: ['/api/icons'] });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload icon",
+        variant: "destructive"
+      });
+    }
+
+    // Clear the input
+    event.target.value = '';
+  };
+
   const applyTheme = (theme: string) => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -671,15 +730,7 @@ export default function SettingsPage() {
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      toast({
-                        title: "Icon Upload",
-                        description: "Icon upload functionality will be implemented",
-                      });
-                    }
-                  }}
+                  onChange={handleIconUpload}
                 />
               </CardTitle>
               <CardDescription>Customize icons used throughout the system</CardDescription>

@@ -13,7 +13,7 @@ import {
   type ReportExecution, type InsertReportExecution, type SavedQuery, type InsertSavedQuery
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, and, or, gte, lte, count, sum, avg, like, sql } from "drizzle-orm";
+import { eq, desc, asc, and, or, gte, lte, count, sum, avg, like, ilike, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -665,7 +665,7 @@ export class DatabaseStorage implements IStorage {
         .where(whereClause)
     ]);
 
-    // Get student info for each payment
+    // Get student info for each payment and apply search filter
     const paymentsWithStudents = await Promise.all(
       paymentsResult.map(async (payment) => {
         const student = payment.studentId 
@@ -683,9 +683,24 @@ export class DatabaseStorage implements IStorage {
       })
     );
 
+    // Apply search filter if provided
+    let filteredPayments = paymentsWithStudents;
+    if (filters?.search) {
+      const searchTerm = filters.search.toLowerCase();
+      filteredPayments = paymentsWithStudents.filter(payment => {
+        const studentName = payment.student?.name?.toLowerCase() || '';
+        const studentId = payment.student?.studentId?.toLowerCase() || '';
+        const receiptNumber = payment.receiptNumber?.toLowerCase() || '';
+        
+        return studentName.includes(searchTerm) || 
+               studentId.includes(searchTerm) || 
+               receiptNumber.includes(searchTerm);
+      });
+    }
+
     return {
-      payments: paymentsWithStudents,
-      total: totalResult[0]?.count || 0
+      payments: filteredPayments,
+      total: filteredPayments.length
     };
   }
 

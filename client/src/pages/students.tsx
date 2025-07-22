@@ -22,7 +22,9 @@ export default function Students() {
       if (filters.batchId) params.append('batchId', filters.batchId.toString());
       if (filters.isActive !== undefined) params.append('isActive', filters.isActive.toString());
       
-      const response = await fetch(`/api/students?${params}`);
+      const response = await fetch(`/api/students?${params}`, {
+        credentials: 'include'
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch students');
       }
