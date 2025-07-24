@@ -95,8 +95,9 @@ export function StudentForm({ onSuccess, sports, batches }: StudentFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="max-h-[70vh] overflow-y-auto pr-2">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label htmlFor="name">Full Name *</Label>
           <Input
@@ -214,9 +215,9 @@ export function StudentForm({ onSuccess, sports, batches }: StudentFormProps) {
       </div>
 
       {/* Emergency Contact */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <h3 className="font-medium text-gray-900 dark:text-gray-100">Emergency Contact</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <Label htmlFor="emergencyName">Name *</Label>
             <Input
@@ -276,22 +277,22 @@ export function StudentForm({ onSuccess, sports, batches }: StudentFormProps) {
       </div>
 
       {/* Registration Fee Notice */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
-            <h4 className="font-semibold text-blue-900 dark:text-blue-100">Registration Fee</h4>
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              One-time registration fee required for new students
+            <h4 className="font-semibold text-blue-900 dark:text-blue-100 text-sm">Registration Fee</h4>
+            <p className="text-xs text-blue-700 dark:text-blue-300">
+              One-time registration fee required
             </p>
           </div>
           <div className="text-right sm:text-left">
-            <span className="text-2xl font-bold text-blue-900 dark:text-blue-100">₹300</span>
-            <p className="text-xs text-blue-600 dark:text-blue-400">One-time payment</p>
+            <span className="text-xl font-bold text-blue-900 dark:text-blue-100">₹300</span>
+            <p className="text-xs text-blue-600 dark:text-blue-400">One-time</p>
           </div>
         </div>
         
         {/* Payment Buttons */}
-        <div className="flex flex-col sm:flex-row gap-2 mt-4">
+        <div className="flex flex-col sm:flex-row gap-2 mt-3">
           <Button 
             type="button" 
             variant="outline" 
@@ -323,23 +324,24 @@ export function StudentForm({ onSuccess, sports, batches }: StudentFormProps) {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 pt-4">
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={onSuccess}
-          className="flex-1 sm:flex-none"
-        >
-          Cancel
-        </Button>
-        <Button 
-          type="submit" 
-          disabled={createStudentMutation.isPending}
-          className="flex-1 sm:flex-none bg-primary hover:bg-primary/90"
-        >
-          {createStudentMutation.isPending ? "Adding..." : "Add Student"}
-        </Button>
-      </div>
-    </form>
+        <div className="flex flex-col sm:flex-row gap-2 pt-3">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onSuccess}
+            className="flex-1 sm:flex-none"
+          >
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            disabled={createStudentMutation.isPending}
+            className="flex-1 sm:flex-none bg-primary hover:bg-primary/90"
+          >
+            {createStudentMutation.isPending ? "Adding..." : "Add Student"}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }

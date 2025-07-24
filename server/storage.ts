@@ -56,6 +56,7 @@ export interface IStorage {
   // Sport operations
   getSport(id: number): Promise<Sport | undefined>;
   getSports(isActive?: boolean): Promise<Sport[]>;
+  getSportByName(name: string): Promise<Sport | undefined>;
   createSport(sport: InsertSport): Promise<Sport>;
   updateSport(id: number, updates: Partial<InsertSport>): Promise<Sport | undefined>;
 
@@ -555,6 +556,11 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async getSportByName(name: string): Promise<Sport | undefined> {
+    const [sport] = await db.select().from(sports).where(eq(sports.name, name)).limit(1);
+    return sport;
+  }
+
   async createSport(sportData: InsertSport): Promise<Sport> {
     const [sport] = await db.insert(sports).values(sportData).returning();
     return sport;
@@ -652,55 +658,76 @@ export class DatabaseStorage implements IStorage {
     if (filters?.status) conditions.push(eq(payments.status, filters.status));
     if (filters?.monthYear) conditions.push(eq(payments.monthYear, filters.monthYear));
 
+    // Add search conditions at database level using JOIN
+    if (filters?.search) {
+      const searchConditions = or(
+        like(students.name, `%${filters.search}%`),
+        like(students.studentId, `%${filters.search}%`),
+        like(payments.receiptNumber, `%${filters.search}%`)
+      );
+      conditions.push(searchConditions);
+    }
+
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
     
-    // Get payments first (simple query)
+    // Use JOIN query to get payments with student info in single query
+    const baseQuery = db
+      .select({
+        // Payment fields
+        id: payments.id,
+        studentId: payments.studentId,
+        amount: payments.amount,
+        paymentMethod: payments.paymentMethod,
+        status: payments.status,
+        monthYear: payments.monthYear,
+        receiptNumber: payments.receiptNumber,
+        paidAt: payments.paidAt,
+        createdAt: payments.createdAt,
+        updatedAt: payments.updatedAt,
+        // Student fields
+        studentName: students.name,
+        studentStudentId: students.studentId,
+        studentPhone: students.phone
+      })
+      .from(payments)
+      .leftJoin(students, eq(payments.studentId, students.id))
+      .where(whereClause);
+
+    // Execute queries in parallel
     const [paymentsResult, totalResult] = await Promise.all([
-      db.select().from(payments)
-        .where(whereClause)
+      baseQuery
         .limit(filters?.limit || 50)
         .offset(filters?.offset || 0)
         .orderBy(desc(payments.createdAt)),
-      db.select({ count: count() }).from(payments)
+      db
+        .select({ count: count() })
+        .from(payments)
+        .leftJoin(students, eq(payments.studentId, students.id))
         .where(whereClause)
     ]);
 
-    // Get student info for each payment and apply search filter
-    const paymentsWithStudents = await Promise.all(
-      paymentsResult.map(async (payment) => {
-        const student = payment.studentId 
-          ? await db.select({
-              name: students.name,
-              studentId: students.studentId,
-              phone: students.phone
-            }).from(students).where(eq(students.id, payment.studentId)).limit(1)
-          : [];
-
-        return {
-          ...payment,
-          student: student[0] || null
-        };
-      })
-    );
-
-    // Apply search filter if provided
-    let filteredPayments = paymentsWithStudents;
-    if (filters?.search) {
-      const searchTerm = filters.search.toLowerCase();
-      filteredPayments = paymentsWithStudents.filter(payment => {
-        const studentName = payment.student?.name?.toLowerCase() || '';
-        const studentId = payment.student?.studentId?.toLowerCase() || '';
-        const receiptNumber = payment.receiptNumber?.toLowerCase() || '';
-        
-        return studentName.includes(searchTerm) || 
-               studentId.includes(searchTerm) || 
-               receiptNumber.includes(searchTerm);
-      });
-    }
+    // Transform results to include student object
+    const paymentsWithStudents = paymentsResult.map(row => ({
+      id: row.id,
+      studentId: row.studentId,
+      amount: row.amount,
+      paymentMethod: row.paymentMethod,
+      status: row.status,
+      monthYear: row.monthYear,
+      receiptNumber: row.receiptNumber,
+      paidAt: row.paidAt,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      student: row.studentName ? {
+        name: row.studentName,
+        studentId: row.studentStudentId,
+        phone: row.studentPhone
+      } : null
+    }));
 
     return {
-      payments: filteredPayments,
-      total: filteredPayments.length
+      payments: paymentsWithStudents,
+      total: totalResult[0]?.count || 0
     };
   }
 

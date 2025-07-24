@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Seeding - PSA Nashik</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            margin: 1rem 0;
+            transition: all 0.3s ease;
+        }
+        .button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        .button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .log {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌱 Database Seeding Tool</h1>
+        <p>This tool will populate the PSA Nashik database with sample data including sports, batches, and students.</p>
+        
+        <button id="seedBtn" class="button" onclick="seedDatabase()">
+            🚀 Seed Database
+        </button>
+        
+        <button id="testBtn" class="button" onclick="testSearch()">
+            🔍 Test Student Search
+        </button>
+        
+        <div id="log" class="log">Ready to seed database...\n</div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            let prefix = '';
+            let className = '';
+            
+            switch(type) {
+                case 'success':
+                    prefix = '✅';
+                    className = 'success';
+                    break;
+                case 'error':
+                    prefix = '❌';
+                    className = 'error';
+                    break;
+                case 'warning':
+                    prefix = '⚠️';
+                    className = 'warning';
+                    break;
+                default:
+                    prefix = 'ℹ️';
+            }
+            
+            const logEntry = `[${timestamp}] ${prefix} ${message}\n`;
+            logDiv.innerHTML += `<span class="${className}">${logEntry}</span>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function seedDatabase() {
+            const seedBtn = document.getElementById('seedBtn');
+            seedBtn.disabled = true;
+            seedBtn.textContent = '🌱 Seeding...';
+            
+            log('Starting database seeding process...');
+            
+            try {
+                const response = await fetch('/api/seed-database', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log('Database seeding completed successfully!', 'success');
+                    log(`Summary: ${result.summary.sports} sports, ${result.summary.batches} batches, ${result.summary.studentsAdded} students added`, 'success');
+                    log(`Total students in database: ${result.summary.totalStudents}`, 'success');
+                } else {
+                    log(`Seeding failed: ${result.message}`, 'error');
+                    if (result.error) {
+                        log(`Error details: ${result.error}`, 'error');
+                    }
+                }
+            } catch (error) {
+                log(`Network error: ${error.message}`, 'error');
+                log('Make sure the server is running and the seeding endpoint is available', 'warning');
+            }
+            
+            seedBtn.disabled = false;
+            seedBtn.textContent = '🚀 Seed Database';
+        }
+
+        async function testSearch() {
+            const testBtn = document.getElementById('testBtn');
+            testBtn.disabled = true;
+            testBtn.textContent = '🔍 Testing...';
+            
+            log('Testing student search functionality...');
+            
+            try {
+                const response = await fetch('/api/students?search=test&limit=10');
+                const result = await response.json();
+                
+                if (response.ok) {
+                    log(`Search test completed. Found ${result.total} students`, 'success');
+                    if (result.students && result.students.length > 0) {
+                        log(`Sample students: ${result.students.slice(0, 3).map(s => s.name).join(', ')}`, 'success');
+                    }
+                } else {
+                    log(`Search test failed: ${result.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                log(`Search test error: ${error.message}`, 'error');
+            }
+            
+            testBtn.disabled = false;
+            testBtn.textContent = '🔍 Test Student Search';
+        }
+
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            log('Database seeding tool loaded');
+            log('Click "Seed Database" to populate with sample data');
+        });
+    </script>
+</body>
+</html>

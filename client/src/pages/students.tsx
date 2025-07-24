@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,11 +7,16 @@ import { StudentTable } from "@/components/students/student-table";
 import { StudentForm } from "@/components/students/student-form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useStudentStore } from "@/stores/student-store";
-import { UserPlus, Search, Filter, Download } from "lucide-react";
+import { UserPlus, Search, Filter, Download, RefreshCw } from "lucide-react";
 
 export default function Students() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const { filters, setFilters } = useStudentStore();
+  const queryClient = useQueryClient();
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/students'] });
+  };
 
   const { data: studentsData, isLoading, error: studentsError } = useQuery({
     queryKey: ['/api/students', filters],
@@ -22,13 +27,18 @@ export default function Students() {
       if (filters.batchId) params.append('batchId', filters.batchId.toString());
       if (filters.isActive !== undefined) params.append('isActive', filters.isActive.toString());
       
+      console.log('Fetching students from:', `/api/students?${params}`);
       const response = await fetch(`/api/students?${params}`, {
         credentials: 'include'
       });
+      console.log('Students API response status:', response.status);
       if (!response.ok) {
+        console.error('Students API error:', response.status, response.statusText);
         throw new Error('Failed to fetch students');
       }
-      return response.json();
+      const data = await response.json();
+      console.log('Students data received:', data);
+      return data;
     },
   });
 
@@ -109,10 +119,16 @@ export default function Students() {
             {studentsData?.total || 0} students enrolled
           </p>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)} className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add Student
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button onClick={handleRefresh} variant="outline" className="w-full sm:w-auto">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button onClick={() => setIsAddDialogOpen(true)} className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
+            <UserPlus className="h-4 w-4 mr-2" />
+            Add Student
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -186,8 +202,8 @@ export default function Students() {
 
       {/* Add Student Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden">
+          <DialogHeader className="pb-2">
             <DialogTitle>Add New Student</DialogTitle>
             <DialogDescription>
               Fill in the student details to add them to your academy.

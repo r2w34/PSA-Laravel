@@ -189,6 +189,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Student search endpoint (without auth for payment recorder)
+  app.get("/api/students/search", async (req, res) => {
+    try {
+      const query = req.query.query as string;
+      if (!query || query.trim().length === 0) {
+        return res.json({ students: [], total: 0 });
+      }
+
+      const filters = {
+        search: query.trim(),
+        isActive: true, // Only search active students
+        limit: 20, // Limit search results
+        offset: 0
+      };
+
+      const result = await storage.getStudents(filters);
+      res.json(result);
+    } catch (error) {
+      console.error("Error searching students:", error);
+      res.status(500).json({ message: "Failed to fetch student" });
+    }
+  });
+
   app.get("/api/students/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -209,12 +232,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const studentData = insertStudentSchema.parse(req.body);
       
-      // Generate student ID
+      // Convert empty date strings to null for database compatibility
+      const processedData = {
+        ...studentData,
+        dateOfBirth: studentData.dateOfBirth === "" ? null : studentData.dateOfBirth
+      };
+      
+      // Generate student ID with PSA prefix to match existing pattern
       const studentCount = await storage.getStudents({ limit: 1 });
-      const studentId = `STU${String(studentCount.total + 1).padStart(3, '0')}`;
+      const studentId = `PSA${String(studentCount.total + 1).padStart(3, '0')}`;
       
       const student = await storage.createStudent({
-        ...studentData,
+        ...processedData,
         studentId
       });
 
@@ -228,11 +257,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const registrationPayment = {
         studentId: student.id,
         amount: 300, // ₹300 one-time registration fee
-        method: "pending",
+        paymentMethod: "pending",
         status: "pending",
         monthYear: `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`,
-        description: "One-time registration fee",
-        type: "registration",
+        notes: "One-time registration fee",
+        paymentType: "registration",
         dueDate: currentDate,
       };
       
@@ -2234,6 +2263,267 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching icons:', error);
       res.status(500).json({ error: 'Failed to fetch icons' });
+    }
+  });
+
+  // Database seeding endpoint (for development/testing)
+  app.post("/api/seed-database", async (req, res) => {
+    try {
+      console.log("🌱 Starting database seeding...");
+
+      // 1. Add sample sports
+      console.log("📊 Adding sample sports...");
+      const sampleSports = [
+        { name: "Cricket", description: "Traditional cricket training", isActive: true },
+        { name: "Football", description: "Football skills development", isActive: true },
+        { name: "Basketball", description: "Basketball fundamentals", isActive: true },
+        { name: "Tennis", description: "Tennis coaching", isActive: true },
+        { name: "Badminton", description: "Badminton training", isActive: true }
+      ];
+
+      const insertedSports = [];
+      for (const sport of sampleSports) {
+        try {
+          const existingSport = await storage.getSportByName(sport.name);
+          if (!existingSport) {
+            const insertedSport = await storage.createSport(sport);
+            insertedSports.push(insertedSport);
+            console.log(`✅ Added sport: ${sport.name}`);
+          } else {
+            insertedSports.push(existingSport);
+            console.log(`⚠️  Sport ${sport.name} already exists, using existing...`);
+          }
+        } catch (error) {
+          console.log(`❌ Error adding sport ${sport.name}:`, error);
+        }
+      }
+
+      // Get all sports
+      const allSports = await storage.getSports();
+      console.log(`📊 Total sports in database: ${allSports.length}`);
+
+      // 2. Add sample batches
+      console.log("🏃 Adding sample batches...");
+      const sampleBatches = [
+        {
+          name: "Morning Cricket Beginners",
+          sportId: allSports.find(s => s.name === "Cricket")?.id || 1,
+          coachId: null,
+          schedule: { days: ["monday", "wednesday", "friday"], time: "6:00 AM - 8:00 AM" },
+          maxCapacity: 20,
+          currentCapacity: 0,
+          skillLevel: "beginner",
+          isActive: true
+        },
+        {
+          name: "Evening Cricket Advanced",
+          sportId: allSports.find(s => s.name === "Cricket")?.id || 1,
+          coachId: null,
+          schedule: { days: ["tuesday", "thursday", "saturday"], time: "5:00 PM - 7:00 PM" },
+          maxCapacity: 20,
+          currentCapacity: 0,
+          skillLevel: "advanced",
+          isActive: true
+        },
+        {
+          name: "Morning Football Training",
+          sportId: allSports.find(s => s.name === "Football")?.id || 2,
+          coachId: null,
+          schedule: { days: ["monday", "wednesday", "friday"], time: "7:00 AM - 9:00 AM" },
+          maxCapacity: 25,
+          currentCapacity: 0,
+          skillLevel: "intermediate",
+          isActive: true
+        },
+        {
+          name: "Weekend Football Camp",
+          sportId: allSports.find(s => s.name === "Football")?.id || 2,
+          coachId: null,
+          schedule: { days: ["saturday", "sunday"], time: "4:00 PM - 6:00 PM" },
+          maxCapacity: 30,
+          currentCapacity: 0,
+          skillLevel: "beginner",
+          isActive: true
+        },
+        {
+          name: "Basketball Fundamentals",
+          sportId: allSports.find(s => s.name === "Basketball")?.id || 3,
+          coachId: null,
+          schedule: { days: ["tuesday", "thursday"], time: "8:00 AM - 10:00 AM" },
+          maxCapacity: 15,
+          currentCapacity: 0,
+          skillLevel: "beginner",
+          isActive: true
+        }
+      ];
+
+      const insertedBatches = [];
+      for (const batch of sampleBatches) {
+        try {
+          const insertedBatch = await storage.createBatch(batch);
+          insertedBatches.push(insertedBatch);
+          console.log(`✅ Added batch: ${batch.name}`);
+        } catch (error) {
+          console.log(`❌ Error adding batch ${batch.name}:`, error);
+        }
+      }
+
+      // Get all batches
+      const allBatches = await storage.getBatches();
+      console.log(`🏃 Total batches in database: ${allBatches.length}`);
+
+      // 3. Add sample students
+      console.log("🎓 Adding sample students...");
+      const sampleStudents = [
+        {
+          studentId: "PSA001",
+          name: "Arjun Sharma",
+          phone: "9876543210",
+          email: "arjun.sharma@email.com",
+          dateOfBirth: new Date("2008-05-15"),
+          address: "123 MG Road, Nashik",
+          emergencyContact: "9876543211",
+          sportId: allSports.find(s => s.name === "Cricket")?.id || 1,
+          batchId: allBatches.find(b => b.name?.includes("Cricket"))?.id || 1,
+          joiningDate: new Date("2024-01-15"),
+          isActive: true,
+          skillLevel: "beginner"
+        },
+        {
+          studentId: "PSA002",
+          name: "Priya Patel",
+          phone: "9876543212",
+          email: "priya.patel@email.com",
+          dateOfBirth: new Date("2009-08-22"),
+          address: "456 College Road, Nashik",
+          emergencyContact: "9876543213",
+          sportId: allSports.find(s => s.name === "Football")?.id || 2,
+          batchId: allBatches.find(b => b.name?.includes("Football"))?.id || 2,
+          joiningDate: new Date("2024-02-01"),
+          isActive: true,
+          skillLevel: "intermediate"
+        },
+        {
+          studentId: "PSA003",
+          name: "Rahul Desai",
+          phone: "9876543214",
+          email: "rahul.desai@email.com",
+          dateOfBirth: new Date("2007-12-10"),
+          address: "789 Gangapur Road, Nashik",
+          emergencyContact: "9876543215",
+          sportId: allSports.find(s => s.name === "Basketball")?.id || 3,
+          batchId: allBatches.find(b => b.name?.includes("Basketball"))?.id || 3,
+          joiningDate: new Date("2024-01-20"),
+          isActive: true,
+          skillLevel: "advanced"
+        },
+        {
+          studentId: "PSA004",
+          name: "Sneha Kulkarni",
+          phone: "9876543216",
+          email: "sneha.kulkarni@email.com",
+          dateOfBirth: new Date("2008-03-18"),
+          address: "321 Panchavati, Nashik",
+          emergencyContact: "9876543217",
+          sportId: allSports.find(s => s.name === "Tennis")?.id || 4,
+          batchId: allBatches[0]?.id || 1,
+          joiningDate: new Date("2024-02-15"),
+          isActive: true,
+          skillLevel: "beginner"
+        },
+        {
+          studentId: "PSA005",
+          name: "Vikram Singh",
+          phone: "9876543218",
+          email: "vikram.singh@email.com",
+          dateOfBirth: new Date("2009-06-25"),
+          address: "654 Satpur, Nashik",
+          emergencyContact: "9876543219",
+          sportId: allSports.find(s => s.name === "Cricket")?.id || 1,
+          batchId: allBatches.find(b => b.name?.includes("Cricket") && b.skillLevel === "advanced")?.id || 1,
+          joiningDate: new Date("2024-01-10"),
+          isActive: true,
+          skillLevel: "advanced"
+        },
+        {
+          studentId: "PSA006",
+          name: "Anita Joshi",
+          phone: "9876543220",
+          email: "anita.joshi@email.com",
+          dateOfBirth: new Date("2008-11-30"),
+          address: "987 Cidco, Nashik",
+          emergencyContact: "9876543221",
+          sportId: allSports.find(s => s.name === "Badminton")?.id || 5,
+          batchId: allBatches[0]?.id || 1,
+          joiningDate: new Date("2024-03-01"),
+          isActive: true,
+          skillLevel: "intermediate"
+        },
+        {
+          studentId: "PSA007",
+          name: "Karan Mehta",
+          phone: "9876543222",
+          email: "karan.mehta@email.com",
+          dateOfBirth: new Date("2007-09-14"),
+          address: "147 Deolali, Nashik",
+          emergencyContact: "9876543223",
+          sportId: allSports.find(s => s.name === "Football")?.id || 2,
+          batchId: allBatches.find(b => b.name?.includes("Weekend Football"))?.id || 2,
+          joiningDate: new Date("2024-01-25"),
+          isActive: true,
+          skillLevel: "beginner"
+        },
+        {
+          studentId: "PSA008",
+          name: "Pooja Agarwal",
+          phone: "9876543224",
+          email: "pooja.agarwal@email.com",
+          dateOfBirth: new Date("2008-07-08"),
+          address: "258 Ashok Stambh, Nashik",
+          emergencyContact: "9876543225",
+          sportId: allSports.find(s => s.name === "Basketball")?.id || 3,
+          batchId: allBatches.find(b => b.name?.includes("Basketball"))?.id || 3,
+          joiningDate: new Date("2024-02-10"),
+          isActive: true,
+          skillLevel: "intermediate"
+        }
+      ];
+
+      let studentsAdded = 0;
+      for (const student of sampleStudents) {
+        try {
+          const insertedStudent = await storage.createStudent(student);
+          studentsAdded++;
+          console.log(`✅ Added student: ${student.name} (${student.studentId})`);
+        } catch (error) {
+          console.log(`❌ Error adding student ${student.name}:`, error);
+        }
+      }
+
+      // Final count
+      const { total: totalStudents } = await storage.getStudents();
+      console.log(`🎓 Total students in database: ${totalStudents}`);
+
+      console.log("🎉 Database seeding completed successfully!");
+      
+      res.json({
+        success: true,
+        message: "Database seeded successfully!",
+        summary: {
+          sports: allSports.length,
+          batches: allBatches.length,
+          studentsAdded: studentsAdded,
+          totalStudents: totalStudents
+        }
+      });
+
+    } catch (error) {
+      console.error("❌ Error seeding database:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to seed database", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
     }
   });
 
