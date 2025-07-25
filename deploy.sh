@@ -1,10 +1,23 @@
 #!/bin/bash
 
-# Comprehensive Production Deployment Script for Parmanand Sports Academy
-# This script applies all deployment fixes and ensures production readiness
+# PSA-NASHIK Production Deployment Script
+# Fixes: Data Synchronization Issue + Missing Logo Issue
 set -e
 
-echo "🚀 Starting comprehensive deployment for Parmanand Sports Academy..."
+echo "🚀 Starting PSA-NASHIK deployment with data sync and logo fixes..."
+
+# Variables
+PROD_DIR="/var/www/psa-nashik"
+BACKUP_DIR="/var/www/psa-nashik/backups"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+# Create backup
+echo "📦 Creating backup..."
+mkdir -p "$BACKUP_DIR"
+if [ -d "$PROD_DIR/dist/public" ]; then
+    cp -r "$PROD_DIR/dist/public" "$BACKUP_DIR/public_backup_$TIMESTAMP"
+    echo "✅ Backup created: $BACKUP_DIR/public_backup_$TIMESTAMP"
+fi
 
 # Fix 1: Set production environment variables
 echo "🔧 Fix 1: Setting NODE_ENV and PORT environment variables..."

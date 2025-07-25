@@ -27,6 +27,13 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        entryFileNames: `assets/main-${Math.random().toString(36).substring(2)}-[hash].js`,
+        chunkFileNames: `assets/chunk-${Math.random().toString(36).substring(2)}-[hash].js`,
+        assetFileNames: `assets/styles-${Math.random().toString(36).substring(2)}-[hash].[ext]`
+      }
+    }
   },
   server: {
     fs: {
