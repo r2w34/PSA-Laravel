@@ -21,6 +21,7 @@ import {
   Shield,
   MapPin
 } from "lucide-react";
+import psaLogo from "@/assets/psa-logo.png";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -85,7 +86,7 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileToggle }:
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center">
                 <img 
-                  src="/src/assets/psa-logo.png" 
+                  src={psaLogo} 
                   alt="PSA Logo" 
                   className="w-8 h-8 object-contain"
                 />

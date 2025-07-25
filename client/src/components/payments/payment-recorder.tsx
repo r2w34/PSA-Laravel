@@ -47,25 +47,35 @@ export function PaymentRecorder() {
   const { data: searchResults, isLoading: isSearching } = useQuery({
     queryKey: ["/api/students", searchTerm],
     enabled: searchTerm.length > 2,
-    queryFn: () => apiRequest("GET", `/api/students?search=${encodeURIComponent(searchTerm)}`),
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/students?search=${encodeURIComponent(searchTerm)}`);
+      return response.json();
+    },
   });
 
   // Get sports data
   const { data: sports = [] } = useQuery({
     queryKey: ["/api/sports"],
-    queryFn: () => apiRequest("GET", "/api/sports"),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/sports");
+      return response.json();
+    },
   });
 
   // Get batches data
   const { data: batches = [] } = useQuery({
     queryKey: ["/api/batches"],
-    queryFn: () => apiRequest("GET", "/api/batches"),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/batches");
+      return response.json();
+    },
   });
 
   // Payment recording mutation
   const recordPaymentMutation = useMutation({
     mutationFn: async (paymentData: any) => {
-      return apiRequest("POST", "/api/payments", paymentData);
+      const response = await apiRequest("POST", "/api/payments", paymentData);
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -115,11 +125,13 @@ export function PaymentRecorder() {
     
     const paymentData = {
       studentId: selectedStudent.id,
-      amount: parseFloat(amount),
+      amount: parseFloat(amount).toString(),
+      paymentType: "monthly", // Default to monthly fee
       paymentMethod,
-      status: "paid",
+      status: "completed",
       monthYear: new Date().toISOString().slice(0, 7), // YYYY-MM format
-      paidAt: new Date().toISOString(),
+      paymentDate: new Date().toISOString(),
+      notes: `Payment recorded via quick record for ${selectedStudent.name}`,
     };
 
     recordPaymentMutation.mutate(paymentData);

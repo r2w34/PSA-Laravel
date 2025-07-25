@@ -69,14 +69,6 @@ export function Header({ onMenuClick }: HeaderProps) {
               <Moon className="h-4 w-4" />
             )}
           </Button>
-          
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
         </div>
       </div>
     </header>
