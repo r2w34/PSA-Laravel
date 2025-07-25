@@ -228,11 +228,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const registrationPayment = {
         studentId: student.id,
         amount: 300, // ₹300 one-time registration fee
-        method: "pending",
+        paymentMethod: "pending",
+        paymentType: "registration",
         status: "pending",
         monthYear: `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`,
-        description: "One-time registration fee",
-        type: "registration",
+        notes: "One-time registration fee",
         dueDate: currentDate,
       };
       
