@@ -1,0 +1,24 @@
+PSA NASHIK - ONE-LINER DEPLOYMENT COMMAND
+========================================
+
+Copy and paste this single command on your server (45.194.46.109):
+
+pkill -f "node.*psa-nashik"; cp -r /var/www/psa-nashik/dist /var/www/psa-nashik/dist.backup.$(date +%Y%m%d_%H%M%S); cd /var/www/psa-nashik; sed -i.bak 's/return await apiRequest("POST", url, data);/const response = await apiRequest("POST", url, data); return response.json();/g' client/src/components/students/student-form.tsx client/src/pages/coaches.tsx client/src/pages/batches.tsx client/src/pages/sports.tsx client/src/pages/communications.tsx; sed -i.bak 's/return await apiRequest("PUT", url, data);/const response = await apiRequest("PUT", url, data); return response.json();/g' client/src/pages/settings.tsx; npm run build && cd dist && nohup node index.js > /var/log/psa-nashik.log 2>&1 & sleep 3 && echo "✅ Deployment complete! Test at: http://45.194.46.109:3000/students" && ps aux | grep node
+
+========================================
+
+What this command does:
+1. Stops the current application
+2. Creates a backup of current deployment
+3. Applies the student creation fix to all affected files
+4. Rebuilds the application
+5. Starts the application
+6. Shows confirmation
+
+After running this, test by:
+1. Going to http://45.194.46.109:3000/students
+2. Clicking "Add Student"
+3. Filling the form and submitting
+4. You should see "Student added successfully!" instead of "Failed to add student"
+
+========================================

@@ -61,17 +61,21 @@ export default function Fees() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        console.log('Reminder sent successfully:', result);
         toast({
           title: "Reminder Sent",
           description: `WhatsApp reminder sent to ${payment.student?.name}`,
         });
       } else {
-        throw new Error('Failed to send reminder');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to send reminder');
       }
     } catch (error) {
+      console.error('Error sending reminder:', error);
       toast({
         title: "Error",
-        description: "Failed to send WhatsApp reminder. Please check your WhatsApp configuration.",
+        description: error.message || "Failed to send WhatsApp reminder. Please check your WhatsApp configuration.",
         variant: "destructive",
       });
     }
@@ -79,28 +83,45 @@ export default function Fees() {
 
   const { data: paymentsData, isLoading } = useQuery({
     queryKey: ['/api/payments', searchTerm, statusFilter],
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
       if (statusFilter !== 'all') params.append('status', statusFilter);
-      return apiRequest('GET', `/api/payments?${params.toString()}`);
+      const response = await apiRequest('GET', `/api/payments?${params.toString()}`);
+      return response.json();
     },
   });
 
   const { data: revenueStats } = useQuery({
     queryKey: ['/api/payments/revenue-stats'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/payments/revenue-stats');
+      return response.json();
+    },
   });
 
   const { data: pendingPayments } = useQuery({
     queryKey: ['/api/payments/pending'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/payments/pending');
+      return response.json();
+    },
   });
 
   const { data: groupedPendingPayments } = useQuery({
     queryKey: ['/api/payments/pending-grouped'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/payments/pending-grouped');
+      return response.json();
+    },
   });
 
   const { data: students } = useQuery({
     queryKey: ['/api/students'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/students');
+      return response.json();
+    },
   });
 
   const getStatusBadge = (status: string) => {

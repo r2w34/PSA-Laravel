@@ -24,18 +24,60 @@ export default function Attendance() {
 
   const { data: attendanceStats } = useQuery({
     queryKey: ['/api/attendance/stats', { date: selectedDate, batchId: selectedBatch }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedDate) params.append('date', selectedDate);
+      if (selectedBatch) params.append('batchId', selectedBatch.toString());
+      const response = await fetch(`/api/attendance/stats?${params}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch attendance stats');
+      }
+      return response.json();
+    },
   });
 
   const { data: attendanceData } = useQuery({
     queryKey: ['/api/attendance', { date: selectedDate, batchId: selectedBatch }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedDate) params.append('date', selectedDate);
+      if (selectedBatch) params.append('batchId', selectedBatch.toString());
+      const response = await fetch(`/api/attendance?${params}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch attendance data');
+      }
+      return response.json();
+    },
   });
 
   const { data: batches } = useQuery({
     queryKey: ['/api/batches'],
+    queryFn: async () => {
+      const response = await fetch('/api/batches', {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch batches');
+      }
+      return response.json();
+    },
   });
 
   const { data: students } = useQuery({
     queryKey: ['/api/students'],
+    queryFn: async () => {
+      const response = await fetch('/api/students', {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch students');
+      }
+      return response.json();
+    },
   });
 
   const getAttendancePercentage = () => {

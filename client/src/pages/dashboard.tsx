@@ -14,6 +14,15 @@ export default function Dashboard() {
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['/api/dashboard/stats'],
+    queryFn: async () => {
+      const response = await fetch('/api/dashboard/stats', {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard stats');
+      }
+      return response.json();
+    },
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
