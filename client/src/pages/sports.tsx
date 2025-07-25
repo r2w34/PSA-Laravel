@@ -61,7 +61,8 @@ export default function SportsPage() {
 
   const createSportMutation = useMutation({
     mutationFn: async (data: SportFormData) => {
-      return await apiRequest('POST', '/api/sports', data);
+      const response = await apiRequest('POST', '/api/sports', data);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/sports'] });

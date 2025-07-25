@@ -74,7 +74,10 @@ export default function Communications() {
   });
 
   const sendCommunicationMutation = useMutation({
-    mutationFn: (data: CommunicationFormData) => apiRequest("POST", "/api/communications/send", data),
+    mutationFn: async (data: CommunicationFormData) => {
+      const response = await apiRequest("POST", "/api/communications/send", data);
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/communications'] });
       queryClient.invalidateQueries({ queryKey: ['/api/communications/stats'] });

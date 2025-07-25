@@ -84,7 +84,8 @@ export default function BatchesPage() {
 
   const createBatchMutation = useMutation({
     mutationFn: async (data: BatchFormData) => {
-      return await apiRequest('POST', '/api/batches', data);
+      const response = await apiRequest('POST', '/api/batches', data);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });

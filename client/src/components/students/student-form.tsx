@@ -70,7 +70,8 @@ export function StudentForm({ onSuccess, sports, batches }: StudentFormProps) {
 
   const createStudentMutation = useMutation({
     mutationFn: async (data: StudentFormData) => {
-      return apiRequest("POST", "/api/students", data);
+      const response = await apiRequest("POST", "/api/students", data);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/students"] });
@@ -81,10 +82,11 @@ export function StudentForm({ onSuccess, sports, batches }: StudentFormProps) {
       });
       onSuccess();
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error("Student creation error:", error);
       toast({
         title: "Error",
-        description: "Failed to add student",
+        description: error?.message || "Failed to add student",
         variant: "destructive",
       });
     },

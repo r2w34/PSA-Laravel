@@ -108,7 +108,10 @@ export default function Coaches() {
   });
 
   const createCoachMutation = useMutation({
-    mutationFn: (data: CoachFormData) => apiRequest("POST", "/api/coaches", data),
+    mutationFn: async (data: CoachFormData) => {
+      const response = await apiRequest("POST", "/api/coaches", data);
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/coaches'] });
       queryClient.invalidateQueries({ queryKey: ['/api/coaches/stats'] });

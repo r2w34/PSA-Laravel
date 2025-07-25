@@ -50,7 +50,8 @@ export default function SettingsPage() {
 
   const updateSettingMutation = useMutation({
     mutationFn: async ({ key, value }: { key: string; value: any }) => {
-      return await apiRequest('POST', '/api/settings', { key, value });
+      const response = await apiRequest('POST', '/api/settings', { key, value });
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
@@ -70,7 +71,8 @@ export default function SettingsPage() {
 
   const updatePaymentGatewayMutation = useMutation({
     mutationFn: async (gateway: any) => {
-      return await apiRequest('POST', '/api/payment-gateways', gateway);
+      const response = await apiRequest('POST', '/api/payment-gateways', gateway);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/payment-gateways'] });
