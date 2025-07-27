@@ -10,6 +10,7 @@ use App\Http\Controllers\BatchController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\WhatsAppController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -63,6 +64,22 @@ Route::middleware('auth')->group(function () {
     Route::resource('payments', PaymentController::class);
     Route::get('/payments-export', [PaymentController::class, 'export'])->name('payments.export');
     Route::get('/payments/{payment}/receipt', [PaymentController::class, 'receipt'])->name('payments.receipt');
+    
+    // WhatsApp Management Routes
+    Route::prefix('whatsapp')->name('whatsapp.')->group(function () {
+        Route::get('/', [WhatsAppController::class, 'index'])->name('index');
+        Route::get('/status', [WhatsAppController::class, 'status'])->name('status');
+        Route::post('/initialize', [WhatsAppController::class, 'initialize'])->name('initialize');
+        Route::get('/qr-code', [WhatsAppController::class, 'qrCode'])->name('qr-code');
+        Route::post('/send-message', [WhatsAppController::class, 'sendMessage'])->name('send-message');
+        Route::post('/send-fee-reminder', [WhatsAppController::class, 'sendFeeReminder'])->name('send-fee-reminder');
+        Route::post('/send-session-notification', [WhatsAppController::class, 'sendSessionNotification'])->name('send-session-notification');
+        Route::post('/send-bulk-fee-reminders', [WhatsAppController::class, 'sendBulkFeeReminders'])->name('send-bulk-fee-reminders');
+        Route::get('/outstanding-fee-students', [WhatsAppController::class, 'getOutstandingFeeStudents'])->name('outstanding-fee-students');
+        Route::get('/batches-for-notification', [WhatsAppController::class, 'getBatchesForNotification'])->name('batches-for-notification');
+        Route::get('/test-connection', [WhatsAppController::class, 'testConnection'])->name('test-connection');
+        Route::get('/settings', [WhatsAppController::class, 'settings'])->name('settings');
+    });
     
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

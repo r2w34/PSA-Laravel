@@ -1,0 +1,41 @@
+{
+  "name": "psa-whatsapp-bot",
+  "version": "1.0.0",
+  "description": "WhatsApp Bot Service for PSA Sports Academy Management Suite",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop psa-whatsapp-bot",
+    "pm2:restart": "pm2 restart psa-whatsapp-bot",
+    "pm2:logs": "pm2 logs psa-whatsapp-bot"
+  },
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "puppeteer",
+    "automation",
+    "psa",
+    "sports-academy"
+  ],
+  "author": "PSA Sports Academy",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^21.5.2",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "qrcode-terminal": "^0.12.0",
+    "fs-extra": "^11.1.1",
+    "moment": "^2.29.4",
+    "axios": "^1.6.2",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

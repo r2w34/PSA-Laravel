@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        'bot_url' => env('WHATSAPP_BOT_URL', 'http://localhost:3001'),
+        'webhook_secret' => env('WHATSAPP_WEBHOOK_SECRET'),
+        'timeout' => env('WHATSAPP_TIMEOUT', 30),
+        'enabled' => env('WHATSAPP_ENABLED', false),
+    ],
+
 ];

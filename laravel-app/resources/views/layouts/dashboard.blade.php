@@ -220,6 +220,13 @@
                     @endif
 
                     @if(auth()->user()->hasRole('admin'))
+                    <a href="{{ route('whatsapp.index') }}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white {{ request()->routeIs('whatsapp.*') ? 'bg-purple-600 text-white' : '' }}">
+                        <i class="fab fa-whatsapp w-5"></i>
+                        <span>WhatsApp</span>
+                    </a>
+                    @endif
+
+                    @if(auth()->user()->hasRole('admin'))
                     <a href="#" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white">
                         <i class="fas fa-chart-bar w-5"></i>
                         <span>Reports</span>
