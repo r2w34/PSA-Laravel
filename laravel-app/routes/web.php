@@ -11,10 +11,27 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\WhatsAppController;
+use App\Http\Controllers\InstallController;
+use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
+});
+
+// Installation Routes
+Route::prefix('install')->name('install.')->group(function () {
+    Route::get('/', [InstallController::class, 'index'])->name('index');
+    Route::get('/requirements', [InstallController::class, 'requirements'])->name('requirements');
+    Route::get('/permissions', [InstallController::class, 'permissions'])->name('permissions');
+    Route::get('/environment', [InstallController::class, 'environment'])->name('environment');
+    Route::post('/environment', [InstallController::class, 'environmentSave'])->name('environment.save');
+    Route::get('/database', [InstallController::class, 'database'])->name('database');
+    Route::post('/database', [InstallController::class, 'databaseInstall'])->name('database.install');
+    Route::get('/admin', [InstallController::class, 'admin'])->name('admin');
+    Route::post('/admin', [InstallController::class, 'adminSave'])->name('admin.save');
+    Route::get('/complete', [InstallController::class, 'complete'])->name('complete');
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
@@ -79,6 +96,37 @@ Route::middleware('auth')->group(function () {
         Route::get('/batches-for-notification', [WhatsAppController::class, 'getBatchesForNotification'])->name('batches-for-notification');
         Route::get('/test-connection', [WhatsAppController::class, 'testConnection'])->name('test-connection');
         Route::get('/settings', [WhatsAppController::class, 'settings'])->name('settings');
+    });
+    
+    // Reports Routes
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/', [ReportsController::class, 'index'])->name('index');
+        Route::get('/dashboard', [ReportsController::class, 'dashboard'])->name('dashboard');
+        Route::get('/revenue', [ReportsController::class, 'revenue'])->name('revenue');
+        Route::get('/students', [ReportsController::class, 'students'])->name('students');
+        Route::get('/attendance', [ReportsController::class, 'attendance'])->name('attendance');
+        Route::get('/fees', [ReportsController::class, 'fees'])->name('fees');
+        Route::get('/export', [ReportsController::class, 'export'])->name('export');
+    });
+    
+    // Settings Routes
+    Route::prefix('settings')->name('settings.')->group(function () {
+        Route::get('/', [SettingsController::class, 'index'])->name('index');
+        Route::get('/general', [SettingsController::class, 'general'])->name('general');
+        Route::post('/general', [SettingsController::class, 'updateGeneral'])->name('general.update');
+        Route::get('/database', [SettingsController::class, 'database'])->name('database');
+        Route::post('/database', [SettingsController::class, 'updateDatabase'])->name('database.update');
+        Route::get('/email', [SettingsController::class, 'email'])->name('email');
+        Route::post('/email', [SettingsController::class, 'updateEmail'])->name('email.update');
+        Route::get('/whatsapp', [SettingsController::class, 'whatsapp'])->name('whatsapp');
+        Route::post('/whatsapp', [SettingsController::class, 'updateWhatsApp'])->name('whatsapp.update');
+        Route::get('/backup', [SettingsController::class, 'backup'])->name('backup');
+        Route::post('/backup/create', [SettingsController::class, 'createBackup'])->name('backup.create');
+        Route::get('/backup/download/{filename}', [SettingsController::class, 'downloadBackup'])->name('backup.download');
+        Route::delete('/backup/{filename}', [SettingsController::class, 'deleteBackup'])->name('backup.delete');
+        Route::get('/cache', [SettingsController::class, 'cache'])->name('cache');
+        Route::post('/cache/clear', [SettingsController::class, 'clearCache'])->name('cache.clear');
+        Route::post('/cache/optimize', [SettingsController::class, 'optimizeCache'])->name('cache.optimize');
     });
     
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

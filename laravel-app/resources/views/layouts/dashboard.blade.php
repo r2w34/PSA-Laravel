@@ -227,7 +227,7 @@
                     @endif
 
                     @if(auth()->user()->hasRole('admin'))
-                    <a href="#" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white">
+                    <a href="{{ route('reports.index') }}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white">
                         <i class="fas fa-chart-bar w-5"></i>
                         <span>Reports</span>
                     </a>
@@ -241,7 +241,7 @@
                     @endif
 
                     @if(auth()->user()->hasRole('admin'))
-                    <a href="#" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white">
+                    <a href="{{ route('settings.index') }}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white">
                         <i class="fas fa-cog w-5"></i>
                         <span>Settings</span>
                     </a>
