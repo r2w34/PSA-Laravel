@@ -19,18 +19,24 @@
     @livewireStyles
 
     <style>
-        /* Custom Dark Theme Styles */
+        /* Custom Blue Dark Theme Styles */
         :root {
-            --primary-purple: #8B5CF6;
-            --primary-purple-dark: #7C3AED;
-            --secondary-purple: #A78BFA;
+            --primary-blue: #3B82F6;
+            --primary-blue-dark: #2563EB;
+            --secondary-blue: #60A5FA;
+            --accent-blue: #1D4ED8;
             --dark-bg: #0F172A;
             --dark-surface: #1E293B;
             --dark-surface-light: #334155;
             --dark-border: #475569;
+            --sidebar-bg: #1E293B;
+            --sidebar-hover: #334155;
             --text-primary: #F8FAFC;
             --text-secondary: #CBD5E1;
             --text-muted: #94A3B8;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
         }
 
         body {
@@ -39,22 +45,27 @@
         }
 
         .sidebar {
-            background: linear-gradient(180deg, var(--dark-surface) 0%, #1a202c 100%);
+            background: linear-gradient(180deg, var(--sidebar-bg) 0%, #1a202c 100%);
             border-right: 1px solid var(--dark-border);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
         }
 
         .nav-item {
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 8px;
+            margin: 2px 8px;
         }
 
         .nav-item:hover {
-            background-color: var(--dark-surface-light);
+            background-color: var(--sidebar-hover);
             transform: translateX(4px);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
         }
 
         .nav-item.active {
-            background: linear-gradient(90deg, var(--primary-purple) 0%, var(--secondary-purple) 100%);
-            border-left: 4px solid var(--primary-purple);
+            background: linear-gradient(90deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+            border-left: 4px solid var(--primary-blue);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
 
         .card {
@@ -65,23 +76,25 @@
         }
 
         .card-gradient {
-            background: linear-gradient(135deg, var(--primary-purple) 0%, var(--secondary-purple) 100%);
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
         }
 
         .btn-primary {
-            background: linear-gradient(90deg, var(--primary-purple) 0%, var(--primary-purple-dark) 100%);
+            background: linear-gradient(90deg, var(--primary-blue) 0%, var(--primary-blue-dark) 100%);
             border: none;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 8px;
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 15px rgba(139, 92, 246, 0.3);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
         }
 
         .stat-card {
             background: linear-gradient(135deg, var(--dark-surface) 0%, var(--dark-surface-light) 100%);
-            border-left: 4px solid var(--primary-purple);
+            border-left: 4px solid var(--primary-blue);
+            border-radius: 12px;
         }
 
         .table-dark {
@@ -96,19 +109,59 @@
         }
 
         .badge-success {
-            background-color: #10B981;
+            background-color: var(--success);
         }
 
         .badge-warning {
-            background-color: #F59E0B;
+            background-color: var(--warning);
         }
 
         .badge-danger {
-            background-color: #EF4444;
+            background-color: var(--danger);
         }
 
         .badge-info {
-            background-color: var(--primary-purple);
+            background-color: var(--primary-blue);
+        }
+
+        /* Dark Mode Toggle */
+        .dark-mode-toggle {
+            background: var(--dark-surface);
+            border: 1px solid var(--dark-border);
+            border-radius: 20px;
+            padding: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .dark-mode-toggle:hover {
+            background: var(--dark-surface-light);
+        }
+
+        /* Improved spacing and layout */
+        .main-content {
+            background: var(--dark-bg);
+            min-height: 100vh;
+        }
+
+        .content-wrapper {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* Professional card styling */
+        .metric-card {
+            background: linear-gradient(135deg, var(--dark-surface) 0%, var(--dark-surface-light) 100%);
+            border: 1px solid var(--dark-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
         }
 
         .dropdown-menu {
@@ -251,57 +304,66 @@
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 lg:flex-1 min-w-0">
+        <div class="flex-1 lg:flex-1 min-w-0 main-content">
             <!-- Top Navigation -->
-            <header class="bg-slate-800 border-b border-slate-700 px-6 py-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                        <!-- Mobile menu toggle -->
-                        <button id="mobile-menu-toggle" class="lg:hidden p-2 text-gray-400 hover:text-white rounded-lg hover:bg-slate-700 transition-colors relative z-50">
-                            <i class="fas fa-bars text-lg"></i>
-                        </button>
-                        
-                        <div>
-                            <h2 class="text-2xl font-bold text-white">@yield('page-title', 'Dashboard')</h2>
-                            <p class="text-gray-400 text-sm">@yield('page-description', 'Welcome to PSA Sports Academy Management')</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center space-x-4">
-                        <!-- Notifications -->
-                        <div class="relative">
-                            <button class="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-slate-700 transition-colors">
-                                <i class="fas fa-bell text-lg"></i>
-                                <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
+            <header class="bg-slate-800 border-b border-slate-700 px-4 lg:px-6 py-4 sticky top-0 z-20">
+                <div class="content-wrapper">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <!-- Mobile menu toggle -->
+                            <button id="mobile-menu-toggle" class="lg:hidden p-2 text-gray-400 hover:text-white rounded-lg hover:bg-slate-700 transition-colors relative z-50">
+                                <i class="fas fa-bars text-lg"></i>
                             </button>
+                            
+                            <div>
+                                <h2 class="text-xl lg:text-2xl font-bold text-white">@yield('page-title', 'Dashboard')</h2>
+                                <p class="text-gray-400 text-sm hidden sm:block">@yield('page-description', 'Welcome to PSA Sports Academy Management')</p>
+                            </div>
                         </div>
 
-                        <!-- User Menu -->
-                        <div class="relative" x-data="{ open: false }">
-                            <button @click="open = !open" class="flex items-center space-x-3 p-2 rounded-lg hover:bg-slate-700 transition-colors">
-                                <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-700 rounded-full flex items-center justify-center">
-                                    <span class="text-white text-sm font-medium">{{ substr(Auth::user()->name, 0, 1) }}</span>
-                                </div>
-                                <div class="text-left">
-                                    <p class="text-white text-sm font-medium">{{ Auth::user()->name }}</p>
-                                    <p class="text-gray-400 text-xs capitalize">{{ Auth::user()->role }}</p>
-                                </div>
-                                <i class="fas fa-chevron-down text-gray-400 text-sm"></i>
-                            </button>
+                        <div class="flex items-center space-x-2 lg:space-x-4">
+                            <!-- Dark Mode Toggle -->
+                            <div class="dark-mode-toggle">
+                                <button id="theme-toggle" class="p-2 text-gray-400 hover:text-white rounded-full transition-colors">
+                                    <i class="fas fa-moon text-sm"></i>
+                                </button>
+                            </div>
 
-                            <div x-show="open" @click.away="open = false" x-transition class="absolute right-0 mt-2 w-48 bg-slate-800 rounded-lg shadow-lg border border-slate-700 py-2">
-                                <a href="{{ route('profile.edit') }}" class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-slate-700">
-                                    <i class="fas fa-user w-4"></i>
-                                    <span>Profile</span>
-                                </a>
-                                <div class="border-t border-slate-700 my-2"></div>
-                                <form method="POST" action="{{ route('logout') }}">
-                                    @csrf
-                                    <button type="submit" class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-slate-700 w-full text-left">
-                                        <i class="fas fa-sign-out-alt w-4"></i>
-                                        <span>Log Out</span>
-                                    </button>
-                                </form>
+                            <!-- Notifications -->
+                            <div class="relative">
+                                <button class="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-slate-700 transition-colors">
+                                    <i class="fas fa-bell text-lg"></i>
+                                    <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
+                                </button>
+                            </div>
+
+                            <!-- User Menu -->
+                            <div class="relative" x-data="{ open: false }">
+                                <button @click="open = !open" class="flex items-center space-x-3 p-2 rounded-lg hover:bg-slate-700 transition-colors">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center">
+                                        <span class="text-white text-sm font-medium">{{ substr(Auth::user()->name, 0, 1) }}</span>
+                                    </div>
+                                    <div class="text-left hidden sm:block">
+                                        <p class="text-white text-sm font-medium">{{ Auth::user()->name }}</p>
+                                        <p class="text-gray-400 text-xs capitalize">{{ Auth::user()->role }}</p>
+                                    </div>
+                                    <i class="fas fa-chevron-down text-gray-400 text-sm"></i>
+                                </button>
+
+                                <div x-show="open" @click.away="open = false" x-transition class="absolute right-0 mt-2 w-48 bg-slate-800 rounded-lg shadow-lg border border-slate-700 py-2">
+                                    <a href="{{ route('profile.edit') }}" class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-slate-700">
+                                        <i class="fas fa-user w-4"></i>
+                                        <span>Profile</span>
+                                    </a>
+                                    <div class="border-t border-slate-700 my-2"></div>
+                                    <form method="POST" action="{{ route('logout') }}">
+                                        @csrf
+                                        <button type="submit" class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-slate-700 w-full text-left">
+                                            <i class="fas fa-sign-out-alt w-4"></i>
+                                            <span>Log Out</span>
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -309,20 +371,22 @@
             </header>
 
             <!-- Page Content -->
-            <main class="p-6">
-                @if (session('success'))
-                    <div class="mb-6 bg-green-800 border border-green-700 text-green-100 px-4 py-3 rounded-lg">
-                        {{ session('success') }}
-                    </div>
-                @endif
+            <main class="p-4 lg:p-6">
+                <div class="content-wrapper">
+                    @if (session('success'))
+                        <div class="mb-6 bg-green-800 border border-green-700 text-green-100 px-4 py-3 rounded-lg">
+                            {{ session('success') }}
+                        </div>
+                    @endif
 
-                @if (session('error'))
-                    <div class="mb-6 bg-red-800 border border-red-700 text-red-100 px-4 py-3 rounded-lg">
-                        {{ session('error') }}
-                    </div>
-                @endif
+                    @if (session('error'))
+                        <div class="mb-6 bg-red-800 border border-red-700 text-red-100 px-4 py-3 rounded-lg">
+                            {{ session('error') }}
+                        </div>
+                    @endif
 
-                @yield('content')
+                    @yield('content')
+                </div>
             </main>
         </div>
     </div>
@@ -336,6 +400,7 @@
             const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('mobile-menu-overlay');
+            const themeToggle = document.getElementById('theme-toggle');
             
             function toggleMobileMenu() {
                 sidebar.classList.toggle('-translate-x-full');
@@ -370,6 +435,64 @@
                 link.addEventListener('click', function() {
                     if (window.innerWidth < 1024) {
                         closeMobileMenu();
+                    }
+                });
+            });
+
+            // Dark mode toggle functionality
+            if (themeToggle) {
+                const icon = themeToggle.querySelector('i');
+                let isDark = localStorage.getItem('theme') === 'dark' || 
+                           (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                
+                function updateTheme() {
+                    if (isDark) {
+                        document.documentElement.classList.add('dark');
+                        icon.className = 'fas fa-sun text-sm';
+                        localStorage.setItem('theme', 'dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        icon.className = 'fas fa-moon text-sm';
+                        localStorage.setItem('theme', 'light');
+                    }
+                }
+                
+                // Initialize theme
+                updateTheme();
+                
+                themeToggle.addEventListener('click', function() {
+                    isDark = !isDark;
+                    updateTheme();
+                });
+            }
+
+            // Add smooth scrolling to navigation links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+
+            // Add loading states to buttons
+            document.querySelectorAll('button[type="submit"], .btn-primary').forEach(button => {
+                button.addEventListener('click', function() {
+                    if (!this.disabled) {
+                        const originalText = this.innerHTML;
+                        this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Loading...';
+                        this.disabled = true;
+                        
+                        // Re-enable after 3 seconds (fallback)
+                        setTimeout(() => {
+                            this.innerHTML = originalText;
+                            this.disabled = false;
+                        }, 3000);
                     }
                 });
             });
