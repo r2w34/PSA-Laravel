@@ -12,14 +12,27 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Skip this migration for SQLite testing
+        // Skip this migration for SQLite or if columns don't exist
         if (DB::getDriverName() === 'sqlite') {
             return;
         }
         
-        // Update existing data if not already done
-        DB::statement("UPDATE inquiries SET name = full_name WHERE name = ''");
-        DB::statement("UPDATE inquiries SET source = COALESCE(lead_source, 'website') WHERE source IS NULL");
+        // Check if the columns exist before trying to use them
+        $hasFullName = Schema::hasColumn('inquiries', 'full_name');
+        $hasLeadSource = Schema::hasColumn('inquiries', 'lead_source');
+        
+        if (!$hasFullName && !$hasLeadSource) {
+            // Columns don't exist, skip this migration
+            return;
+        }
+        
+        // Update existing data if columns exist
+        if ($hasFullName) {
+            DB::statement("UPDATE inquiries SET name = full_name WHERE name = '' AND full_name IS NOT NULL");
+        }
+        if ($hasLeadSource) {
+            DB::statement("UPDATE inquiries SET source = COALESCE(lead_source, 'website') WHERE source IS NULL");
+        }
         
         // Drop foreign key constraints for columns we want to remove
         Schema::table('inquiries', function (Blueprint $table) {
