@@ -149,24 +149,78 @@ function runMigrations() {
         return false;
     }
     
-    // Try to run migrations
-    $output = [];
-    $returnCode = 0;
-    
-    exec('php artisan migrate --force 2>&1', $output, $returnCode);
-    
-    if ($returnCode === 0) {
-        echo "✅ Migrations completed successfully<br>";
-        foreach ($output as $line) {
-            echo "   " . htmlspecialchars($line) . "<br>";
+    try {
+        // Load Laravel first to ensure it's working
+        require_once 'vendor/autoload.php';
+        $app = require_once 'bootstrap/app.php';
+        
+        // Get the Artisan kernel
+        $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+        
+        echo "🔄 Checking migration status...<br>";
+        
+        // Check if migrations table exists
+        try {
+            $exitCode = $kernel->call('migrate:status');
+            echo "✅ Migration system is working<br>";
+        } catch (Exception $e) {
+            echo "⚠️ Migration table doesn't exist, will create it<br>";
         }
-        return true;
-    } else {
-        echo "❌ Migration failed<br>";
-        foreach ($output as $line) {
-            echo "   " . htmlspecialchars($line) . "<br>";
+        
+        echo "🔄 Running migrations (this may take a moment)...<br>";
+        flush(); // Force output to browser
+        
+        // Run migrations
+        $exitCode = $kernel->call('migrate', ['--force' => true]);
+        
+        if ($exitCode === 0) {
+            echo "✅ Migrations completed successfully<br>";
+            
+            // Try to run seeder
+            echo "🔄 Running database seeder...<br>";
+            flush();
+            
+            try {
+                $exitCode = $kernel->call('db:seed', ['--force' => true]);
+                if ($exitCode === 0) {
+                    echo "✅ Database seeding completed<br>";
+                } else {
+                    echo "⚠️ Database seeding had issues (this is usually okay)<br>";
+                }
+            } catch (Exception $e) {
+                echo "⚠️ Seeding skipped: " . $e->getMessage() . "<br>";
+            }
+            
+            return true;
+        } else {
+            echo "❌ Migration failed with exit code: $exitCode<br>";
+            return false;
         }
-        return false;
+        
+    } catch (Exception $e) {
+        echo "❌ Migration error: " . $e->getMessage() . "<br>";
+        
+        // Fallback to command line execution
+        echo "🔄 Trying alternative migration method...<br>";
+        
+        $output = [];
+        $returnCode = 0;
+        
+        exec('php artisan migrate --force 2>&1', $output, $returnCode);
+        
+        if ($returnCode === 0) {
+            echo "✅ Alternative migration successful<br>";
+            foreach ($output as $line) {
+                echo "   " . htmlspecialchars($line) . "<br>";
+            }
+            return true;
+        } else {
+            echo "❌ Alternative migration also failed<br>";
+            foreach ($output as $line) {
+                echo "   " . htmlspecialchars($line) . "<br>";
+            }
+            return false;
+        }
     }
 }
 
