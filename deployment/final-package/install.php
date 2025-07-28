@@ -78,14 +78,27 @@ if (!is_dir(__DIR__ . '/database')) {
     echo "✅ Created database directory<br>";
 }
 
-// Create SQLite database file
+// Create SQLite database file with proper permissions
 $db_file = __DIR__ . '/database/database.sqlite';
 if (!file_exists($db_file)) {
     touch($db_file);
     chmod($db_file, 0664);
     echo "✅ Created SQLite database file<br>";
 } else {
-    echo "✅ SQLite database file exists<br>";
+    // Ensure proper permissions on existing file
+    chmod($db_file, 0664);
+    echo "✅ SQLite database file permissions updated<br>";
+}
+
+// Test database connection
+try {
+    $pdo = new PDO('sqlite:' . $db_file);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    echo "✅ Database connection test successful<br>";
+} catch (Exception $e) {
+    echo "❌ Database connection test failed: " . $e->getMessage() . "<br>";
+    echo "<p><strong>Try running the fix tool:</strong> <a href='fix-500-error.php' style='color: blue;'>fix-500-error.php</a></p>";
+    echo "<p><strong>Or check file permissions manually</strong></p>";
 }
 
 // Step 4: Run installation
@@ -93,6 +106,34 @@ echo "<h2>Step 4: Installation Process</h2>";
 
 if (isset($_POST['install'])) {
     try {
+        // Clear any existing caches first
+        $cacheFiles = [
+            __DIR__ . '/bootstrap/cache/config.php',
+            __DIR__ . '/bootstrap/cache/routes.php',
+            __DIR__ . '/bootstrap/cache/services.php',
+            __DIR__ . '/bootstrap/cache/packages.php'
+        ];
+        
+        foreach ($cacheFiles as $file) {
+            if (file_exists($file)) {
+                unlink($file);
+            }
+        }
+        echo "✅ Cleared Laravel caches<br>";
+        
+        // Ensure proper directory permissions
+        $dirs = ['storage', 'storage/logs', 'storage/framework', 'storage/framework/cache', 
+                'storage/framework/sessions', 'storage/framework/views', 'bootstrap/cache'];
+        
+        foreach ($dirs as $dir) {
+            $fullPath = __DIR__ . '/' . $dir;
+            if (!is_dir($fullPath)) {
+                mkdir($fullPath, 0755, true);
+            }
+            chmod($fullPath, 0755);
+        }
+        echo "✅ Set directory permissions<br>";
+        
         // Load Laravel
         require_once __DIR__ . '/vendor/autoload.php';
         $app = require_once __DIR__ . '/bootstrap/app.php';
@@ -110,10 +151,14 @@ if (isset($_POST['install'])) {
         $kernel->call('db:seed', ['--force' => true]);
         echo "✅ Database seeding completed<br>";
         
-        // Create storage link
+        // Create storage link (ignore errors if already exists)
         echo "🔄 Creating storage link...<br>";
-        $kernel->call('storage:link');
-        echo "✅ Storage link created<br>";
+        try {
+            $kernel->call('storage:link');
+            echo "✅ Storage link created<br>";
+        } catch (Exception $e) {
+            echo "⚠️ Storage link creation skipped (may already exist)<br>";
+        }
         
         // Mark as installed
         file_put_contents(__DIR__ . '/storage/installed', date('Y-m-d H:i:s'));
@@ -131,8 +176,20 @@ if (isset($_POST['install'])) {
         echo "</div>";
         
     } catch (Exception $e) {
-        echo "❌ Installation failed: " . $e->getMessage() . "<br>";
-        echo "<p style='color: red;'>Please check your server configuration and try again.</p>";
+        echo "<div style='background: #f8d7da; padding: 15px; border-radius: 5px; color: #721c24; margin: 20px 0;'>";
+        echo "<h3>❌ Installation Failed</h3>";
+        echo "<p><strong>Error:</strong> " . htmlspecialchars($e->getMessage()) . "</p>";
+        echo "<p><strong>File:</strong> " . $e->getFile() . " (Line: " . $e->getLine() . ")</p>";
+        echo "<h4>🔧 Troubleshooting Steps:</h4>";
+        echo "<ol>";
+        echo "<li><strong>Run the fix tool:</strong> <a href='fix-500-error.php' style='color: #007bff;'>fix-500-error.php</a></li>";
+        echo "<li><strong>Check file permissions:</strong> Ensure storage/ and database/ directories are writable</li>";
+        echo "<li><strong>Check database file:</strong> Ensure database/database.sqlite exists and is writable</li>";
+        echo "<li><strong>Clear caches:</strong> Delete files in bootstrap/cache/ directory</li>";
+        echo "<li><strong>Check error logs:</strong> Look in storage/logs/ for detailed error information</li>";
+        echo "</ol>";
+        echo "<p><a href='debug.php' style='background: #17a2b8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Run Debug Tool</a></p>";
+        echo "</div>";
     }
 } else {
     // Show installation form
