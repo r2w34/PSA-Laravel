@@ -89,6 +89,15 @@ try {
     }
 } catch (Exception $e) {
     echo "❌ Laravel loading error: " . $e->getMessage() . "<br>";
+    
+    // Specific error handling for common issues
+    if (strpos($e->getMessage(), 'Target class [env] does not exist') !== false) {
+        echo "<div style='background: #fff3cd; padding: 15px; border-radius: 5px; color: #856404; margin: 10px 0;'>";
+        echo "<h4>🔧 Specific Fix Available!</h4>";
+        echo "<p>This is a Laravel configuration cache issue. Run the specific fix:</p>";
+        echo "<p><a href='fix-env-error.php' style='background: #ffc107; color: #212529; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Fix ENV Error</a></p>";
+        echo "</div>";
+    }
 }
 
 echo "<hr><h2>URL Testing</h2>";
@@ -122,7 +131,15 @@ echo "<li><strong>Check Apache mod_rewrite</strong> - Make sure it's enabled on 
 echo "<li><strong>Try direct access</strong> - Visit: <a href='https://psanashik.in/index.php/install'>https://psanashik.in/index.php/install</a></li>";
 echo "</ol>";
 
-echo "<h3>Alternative Installation Method:</h3>";
+echo "<h3>Fix Tools Available:</h3>";
+echo "<p>Use these specialized fix tools for common issues:</p>";
+echo "<ul>";
+echo "<li><a href='fix-env-error.php' style='color: #007bff;'>fix-env-error.php</a> - Fix 'Target class [env] does not exist' error</li>";
+echo "<li><a href='fix-500-error.php' style='color: #007bff;'>fix-500-error.php</a> - Fix general 500 server errors</li>";
+echo "<li><a href='install.php' style='color: #007bff;'>install.php</a> - Alternative installation method</li>";
+echo "</ul>";
+
+echo "<h3>Manual Installation Method:</h3>";
 echo "<p>If the installer doesn't work, you can manually set up the database:</p>";
 echo "<ol>";
 echo "<li>Create the SQLite database file: <code>touch database/database.sqlite</code></li>";
