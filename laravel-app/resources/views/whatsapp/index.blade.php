@@ -1,4 +1,8 @@
-<x-dashboard-layout>
+@extends('layouts.dashboard')
+
+@section('title', 'WhatsApp Management')
+
+@section('content')
     <div class="space-y-6">
         <!-- Header -->
         <div class="flex justify-between items-center">
@@ -422,4 +426,4 @@
             @endif
         });
     </script>
-</x-dashboard-layout>
+@endsection

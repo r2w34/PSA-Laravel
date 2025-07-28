@@ -12,6 +12,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Skip this migration for SQLite testing
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+        
         // Update existing data if not already done
         DB::statement("UPDATE inquiries SET name = full_name WHERE name = ''");
         DB::statement("UPDATE inquiries SET source = COALESCE(lead_source, 'website') WHERE source IS NULL");

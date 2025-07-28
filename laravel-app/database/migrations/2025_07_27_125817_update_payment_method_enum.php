@@ -12,8 +12,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE payments MODIFY COLUMN payment_method ENUM('cash', 'card', 'upi', 'bank_transfer', 'cheque', 'online') NOT NULL");
-        DB::statement("ALTER TABLE payments MODIFY COLUMN status ENUM('pending', 'completed', 'failed', 'refunded') NOT NULL DEFAULT 'pending'");
+        // SQLite doesn't support MODIFY COLUMN, so we'll skip this for SQLite
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE payments MODIFY COLUMN payment_method ENUM('cash', 'card', 'upi', 'bank_transfer', 'cheque', 'online') NOT NULL");
+            DB::statement("ALTER TABLE payments MODIFY COLUMN status ENUM('pending', 'completed', 'failed', 'refunded') NOT NULL DEFAULT 'pending'");
+        }
     }
 
     /**
@@ -21,7 +24,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE payments MODIFY COLUMN payment_method ENUM('cash','upi','card','online') NOT NULL");
-        DB::statement("ALTER TABLE payments MODIFY COLUMN status ENUM('pending','completed','failed') NOT NULL DEFAULT 'pending'");
+        // SQLite doesn't support MODIFY COLUMN, so we'll skip this for SQLite
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE payments MODIFY COLUMN payment_method ENUM('cash','upi','card','online') NOT NULL");
+            DB::statement("ALTER TABLE payments MODIFY COLUMN status ENUM('pending','completed','failed') NOT NULL DEFAULT 'pending'");
+        }
     }
 };
