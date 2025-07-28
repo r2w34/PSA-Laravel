@@ -8,6 +8,10 @@ use App\Services\WhatsAppService;
 use App\Models\Student;
 use App\Models\Batch;
 use App\Models\Payment;
+use App\Jobs\SendWhatsAppMessage;
+use App\Jobs\SendFeeReminder;
+use App\Jobs\SendSessionNotification;
+use App\Jobs\SendBulkFeeReminders;
 
 class WhatsAppController extends Controller
 {
@@ -106,7 +110,8 @@ class WhatsAppController extends Controller
     public function sendFeeReminder(Request $request): JsonResponse
     {
         $request->validate([
-            'student_id' => 'required|exists:students,id'
+            'student_id' => 'required|exists:students,id',
+            'reminder_type' => 'sometimes|string|in:gentle,overdue,final'
         ]);
 
         if (!config('services.whatsapp.enabled')) {
@@ -116,16 +121,23 @@ class WhatsAppController extends Controller
             ], 403);
         }
 
-        $result = $this->whatsappService->sendFeeReminder($request->student_id);
+        try {
+            $student = Student::findOrFail($request->student_id);
+            $reminderType = $request->reminder_type ?? 'overdue';
+            
+            // Dispatch fee reminder job to queue
+            SendFeeReminder::dispatch($student, $reminderType);
 
-        if ($result['success']) {
             return response()->json([
                 'success' => true,
-                'message' => 'Fee reminder sent successfully via WhatsApp'
+                'message' => 'Fee reminder has been queued for delivery via WhatsApp'
             ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to queue fee reminder: ' . $e->getMessage()
+            ], 500);
         }
-
-        return response()->json($result, 400);
     }
 
     /**
@@ -135,7 +147,8 @@ class WhatsAppController extends Controller
     {
         $request->validate([
             'batch_id' => 'required|exists:batches,id',
-            'session_details' => 'sometimes|array'
+            'notification_type' => 'sometimes|string|in:reminder,cancellation,rescheduled,special',
+            'session_date' => 'sometimes|date'
         ]);
 
         if (!config('services.whatsapp.enabled')) {
@@ -145,19 +158,24 @@ class WhatsAppController extends Controller
             ], 403);
         }
 
-        $result = $this->whatsappService->sendSessionNotification(
-            $request->batch_id,
-            $request->session_details
-        );
+        try {
+            $batch = Batch::findOrFail($request->batch_id);
+            $notificationType = $request->notification_type ?? 'reminder';
+            $sessionDate = $request->session_date ? \Carbon\Carbon::parse($request->session_date) : now();
+            
+            // Dispatch session notification job to queue
+            SendSessionNotification::dispatch($batch, $notificationType, $sessionDate);
 
-        if ($result['success']) {
             return response()->json([
                 'success' => true,
-                'message' => 'Session notification sent successfully via WhatsApp'
+                'message' => 'Session notification has been queued for delivery via WhatsApp'
             ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to queue session notification: ' . $e->getMessage()
+            ], 500);
         }
-
-        return response()->json($result, 400);
     }
 
     /**
@@ -166,8 +184,10 @@ class WhatsAppController extends Controller
     public function sendBulkFeeReminders(Request $request): JsonResponse
     {
         $request->validate([
-            'student_ids' => 'required|array',
-            'student_ids.*' => 'exists:students,id'
+            'reminder_type' => 'sometimes|string|in:gentle,overdue,final',
+            'days_overdue' => 'sometimes|integer|min:0',
+            'sport_id' => 'sometimes|exists:sports,id',
+            'batch_id' => 'sometimes|exists:batches,id'
         ]);
 
         if (!config('services.whatsapp.enabled')) {
@@ -177,39 +197,25 @@ class WhatsAppController extends Controller
             ], 403);
         }
 
-        $results = [];
-        $successCount = 0;
-        $errorCount = 0;
-
-        foreach ($request->student_ids as $studentId) {
-            $result = $this->whatsappService->sendFeeReminder($studentId);
+        try {
+            $reminderType = $request->reminder_type ?? 'overdue';
+            $daysOverdue = $request->days_overdue ?? 0;
+            $sportId = $request->sport_id;
+            $batchId = $request->batch_id;
             
-            if ($result['success']) {
-                $successCount++;
-            } else {
-                $errorCount++;
-            }
+            // Dispatch bulk fee reminders job to queue
+            SendBulkFeeReminders::dispatch($reminderType, $daysOverdue, $sportId, $batchId);
 
-            $results[] = [
-                'student_id' => $studentId,
-                'success' => $result['success'],
-                'message' => $result['message']
-            ];
-
-            // Small delay to avoid overwhelming the service
-            usleep(500000); // 0.5 seconds
+            return response()->json([
+                'success' => true,
+                'message' => 'Bulk fee reminders have been queued for delivery via WhatsApp'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to queue bulk fee reminders: ' . $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'message' => "Bulk fee reminders completed. Success: {$successCount}, Errors: {$errorCount}",
-            'data' => [
-                'total' => count($request->student_ids),
-                'success_count' => $successCount,
-                'error_count' => $errorCount,
-                'results' => $results
-            ]
-        ]);
     }
 
     /**
